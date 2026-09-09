@@ -1,0 +1,6 @@
+# Extra dependencies used by the simulation and Rotterdam comparison experiments.
+-r requirements.txt
+scikit-survival>=0.22
+tensorflow>=2.12
+matplotlib>=3.7
+jupyter>=1.0

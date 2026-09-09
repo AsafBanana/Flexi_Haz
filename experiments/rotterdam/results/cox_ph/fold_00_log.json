@@ -1,0 +1,28 @@
+{
+  "coefficients": {
+    "age": 0.0035259667860263934,
+    "chemo_high_er": -0.09803529072951661,
+    "chemo_low_er": -0.07434242455635667,
+    "er": 2.861612713136559e-05,
+    "grade": 0.3164373502780939,
+    "hormon_high_er": -0.30631381287721543,
+    "hormon_low_er": 0.08320648456824443,
+    "meno": 0.04721925974631323,
+    "nodes": 0.0732775318820057,
+    "pgr": -9.597769356137097e-05,
+    "size_20-50": 0.10679839867742984,
+    "size_<=20": -0.2502608559383388,
+    "size_>50": 0.39367283307349893
+  },
+  "cox_se_formula": "sqrt(diag(cph.variance_matrix_))",
+  "fit_style": "full_data_notebook_style",
+  "fold_id": 0,
+  "standard_errors": {
+    "chemo_high_er": 0.097246484439272,
+    "chemo_low_er": 0.08200513649628788,
+    "hormon_high_er": 0.1031185158077584,
+    "hormon_low_er": 0.1051179707650871
+  },
+  "status": "success",
+  "uses_outer_folds": false
+}

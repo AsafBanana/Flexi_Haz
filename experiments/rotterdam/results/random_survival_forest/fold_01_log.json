@@ -1,0 +1,11 @@
+{
+  "fold_id": 1,
+  "params": {
+    "max_depth": 20,
+    "max_features": "log2",
+    "max_samples": 0.5,
+    "min_samples_leaf": 15,
+    "min_samples_split": 30
+  },
+  "status": "success"
+}

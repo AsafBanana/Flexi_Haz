@@ -1,0 +1,2 @@
+model,fold_id,status,n_train,n_test,train_event_rate,test_event_rate,training_time_sec,prediction_time_sec,ibs,mean_auc,c_index,mean_brier_score,n_requested_metric_times,n_valid_metric_times,metric_notes,params_path,n_events_train,n_events_test
+flexihaz_nonlinear,1,success,2385,597,0.5790356394129978,0.5561139028475712,26.73670097673312,0.056669329293072224,0.2203123959798508,0.715486595013118,0.6588371658253879,0.2208293488246506,140,140,,results_er_interaction/tuning/fold_01/flexihaz_nonlinear_best_params.json,1381,332

@@ -1,0 +1,26 @@
+{
+  "best_params": {
+    "batch_size": 100000,
+    "cox_penalizer": 0.0,
+    "hidden_layers": [
+      64,
+      64,
+      64,
+      64
+    ],
+    "hidden_layers_id": 23,
+    "learning_rate": 0.024625774243140573,
+    "lmbd_l1": 0.0,
+    "max_epochs": 2000,
+    "patience": 30,
+    "val_frac": 0.33
+  },
+  "best_trial_number": 36,
+  "best_value": 6.150740051269532,
+  "folds": 5,
+  "model": "zhong2022_ph",
+  "n_train_subjects": 8000,
+  "objective": "mean_validation_cox_partial_negative_log_likelihood",
+  "seed": 20240222,
+  "tuning_rep": 0
+}

@@ -1,0 +1,43 @@
+{
+  "best_params": {
+    "batch_size": 100000,
+    "cox_penalizer": 0.01,
+    "hidden_layers": [
+      32,
+      32,
+      32
+    ],
+    "hidden_layers_id": 14,
+    "learning_rate": 0.0010346033616892216,
+    "lmbd_l1": 0.0,
+    "max_epochs": 2000,
+    "patience": 35,
+    "val_frac": 0.2
+  },
+  "best_trial_number": 80,
+  "best_value": 5.541545867919922,
+  "fold_id": 1,
+  "inner_train_size": 1908,
+  "inner_val_size": 477,
+  "model": "zhong2022_ph",
+  "objective": "validation_cox_partial_negative_log_likelihood",
+  "seed": 221100,
+  "validation_fraction": 0.2,
+  "x_columns": [
+    "age",
+    "nodes",
+    "pgr",
+    "er",
+    "meno",
+    "grade",
+    "size_20-50",
+    "size_<=20",
+    "size_>50"
+  ],
+  "z_columns": [
+    "hormon_low_er",
+    "hormon_high_er",
+    "chemo_low_er",
+    "chemo_high_er"
+  ]
+}

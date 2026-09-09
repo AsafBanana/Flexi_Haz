@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use FLEXI-Haz, please cite this software and the methodological work referenced in the repository."
+title: "FLEXI-Haz"
+type: software
+authors:
+  - family-names: "Bar Tov"
+    given-names: "Matan"
+  - family-names: "Ben Arie"
+    given-names: "Asaf"
+  - family-names: "Gorfine"
+    given-names: "Malka"
+version: 0.1.0
+date-released: 2026-09-09
+repository-code: "https://github.com/MatanBarTov/FLEXI-Haz"
+license: MIT
+keywords:
+  - survival analysis
+  - neural survival analysis
+  - hazard modeling
+  - semiparametric models
+  - deep learning
+references:
+  - type: article
+    title: "Flexible deep neural networks for partially linear survival data: Estimation and survival inference"
+    authors:
+      - family-names: "Ben Arie"
+        given-names: "Asaf"
+      - family-names: "Gorfine"
+        given-names: "Malka"
+    year: 2025
+    identifiers:
+      - type: arxiv
+        value: "2512.10570"

@@ -1,0 +1,18 @@
+{
+  "best_params": {
+    "max_depth": 20,
+    "max_features": 0.5,
+    "max_samples": 0.9,
+    "min_samples_leaf": 10,
+    "min_samples_split": 20
+  },
+  "best_trial_number": 76,
+  "best_value": 0.12272924634067321,
+  "folds": 3,
+  "model": "random_survival_forest",
+  "n_estimators_tuning": 200,
+  "objective": "mean_cross_validated_integrated_brier_score",
+  "recommended_final_n_estimators": 500,
+  "seed": 332211,
+  "tuning_rep": 0
+}

@@ -1,0 +1,173 @@
+{
+  "best_params": {
+    "activation": "relu",
+    "batch_size": 100000.0,
+    "grid_size": "n",
+    "hidden_layers": [
+      32,
+      32,
+      32,
+      32
+    ],
+    "learning_rate": 0.004418252744000458
+  },
+  "best_value": 0.0028145674150437117,
+  "fold_id": 3,
+  "inner_train_size_reference": 1908,
+  "inner_val_size_reference": 478,
+  "max_epochs_used_for_tuning": 2000,
+  "model": "flexihaz_nonlinear",
+  "model_type": "nonlinear",
+  "n_trials": 100,
+  "note": "tune_flexihaz uses validation_fraction=0.20 on the outer-training fold.",
+  "outer_train_size": 2386,
+  "search_space": {
+    "activation": [
+      "relu"
+    ],
+    "batch_size": [
+      100000.0
+    ],
+    "grid_size": [
+      "n"
+    ],
+    "hidden_layers": [
+      [
+        16
+      ],
+      [
+        32
+      ],
+      [
+        64
+      ],
+      [
+        128
+      ],
+      [
+        256
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        32
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        32,
+        64
+      ],
+      [
+        64,
+        64
+      ],
+      [
+        64,
+        128
+      ],
+      [
+        128,
+        128
+      ],
+      [
+        16,
+        16,
+        16
+      ],
+      [
+        16,
+        16,
+        32
+      ],
+      [
+        32,
+        32,
+        32
+      ],
+      [
+        32,
+        32,
+        64
+      ],
+      [
+        64,
+        64,
+        64
+      ],
+      [
+        64,
+        64,
+        128
+      ],
+      [
+        128,
+        128,
+        128
+      ],
+      [
+        16,
+        16,
+        16,
+        16
+      ],
+      [
+        16,
+        16,
+        32,
+        32
+      ],
+      [
+        32,
+        32,
+        32,
+        32
+      ],
+      [
+        32,
+        32,
+        64,
+        64
+      ],
+      [
+        64,
+        64,
+        64,
+        64
+      ],
+      [
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      [
+        16,
+        16,
+        32,
+        32,
+        32
+      ],
+      [
+        32,
+        32,
+        32,
+        32,
+        32
+      ]
+    ],
+    "learning_rate": [
+      0.001,
+      0.05
+    ]
+  },
+  "seed": 221100,
+  "tau": null,
+  "validation_fraction": 0.2
+}

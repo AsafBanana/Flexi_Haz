@@ -1,0 +1,21 @@
+{
+  "best_params": {
+    "max_depth": 20,
+    "max_features": "log2",
+    "max_samples": 0.5,
+    "min_samples_leaf": 15,
+    "min_samples_split": 30
+  },
+  "best_trial_number": 25,
+  "best_value": 0.21068555156267987,
+  "fold_id": 1,
+  "inner_train_size": 1908,
+  "inner_val_size": 477,
+  "model": "random_survival_forest",
+  "n_estimators_tuning": 150,
+  "n_valid_times": 121,
+  "objective": "validation_integrated_brier_score",
+  "recommended_final_n_estimators": 500,
+  "seed": 332211,
+  "validation_fraction": 0.2
+}
