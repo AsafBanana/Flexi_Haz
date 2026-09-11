@@ -18,9 +18,9 @@ model.fit(T, delta, X, Z=Z)
 
 fits
 
-\[
+$$
 \log h(t\mid X,Z)=\theta^\top Z+g(t,X).
-\]
+$$
 
 `X` contains covariates modeled through the neural component. `Z` contains covariates whose effects are represented by the separate linear component.
 
@@ -32,9 +32,9 @@ model.fit(T, delta, W, Z=None)
 
 fits
 
-\[
+$$
 \log h(t\mid W)=g(t,W).
-\]
+$$
 
 All covariates to be modeled flexibly are passed through the `X` argument, named `W` above only for clarity.
 
@@ -52,7 +52,6 @@ FlexiHazardModel(
     batch_size=16**4,
     max_epochs=500,
     patience=30,
-    weight_decay=0.0,
     tau=None,
     grid_size=None,
     include_observed_times=True,
@@ -76,8 +75,6 @@ FlexiHazardModel(
     scale_time=True,
 )
 ```
-
-Important implementation detail: although `weight_decay` remains in the constructor and tuner interface, the current estimator explicitly fixes `self.weight_decay = 0.0`. Supplying another constructor value therefore does not currently enable weight decay.
 
 ## Fitting
 
@@ -173,7 +170,7 @@ result["best_value"]
 
 With `folds=1`, tuning uses the estimator's regular internal validation split. With `folds>1`, it evaluates each configuration using subject-level K-fold validation.
 
-The current default search space includes hidden-layer configurations, learning rate, dropout, batch size, activation, and grid size. A `weight_decay` search range can also be supplied, but note the current estimator behavior described above.
+The current default search space includes hidden-layer configurations, learning rate, dropout, batch size, activation, and grid size.
 
 Do not include `patience`, `max_epochs`, `compute_theta_variance`, `refine_theta`, `device`, `seed`, `verbose`, or `epoch_callback` in `model_kwargs` when they duplicate arguments that `tune_flexihaz` itself passes to the estimator.
 
