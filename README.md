@@ -4,27 +4,30 @@
 with support for both partially linear and fully nonparametric hazard
 models.
 
-**Developed by Matan Bar Tov, Asaf Ben Arie, and Malka Gorfine.**
-
 The package builds on the partially linear FLEXI-Haz methodology of Ben
 Arie and Gorfine (2025),
 
-\[
-`\log `{=tex}h(t`\mid `{=tex}X,Z)=`\theta`{=tex}\^`\top `{=tex}Z+g(t,X),
-\]
+$$
+\log h(t \mid X,Z)=\theta^\top Z+g(t,X).
+$$
 
 where selected covariates (Z) retain interpretable, time-constant
 log-hazard effects while a neural network (g(t,X)) captures nonlinear
 covariate effects, time dependence, and time-covariate interactions. The
 package also provides a fully nonparametric variant,
 
-\[ `\log `{=tex}h(t`\mid `{=tex}W)=g(t,W), \]
+$$
+\log h(t \mid W)=g(t,W).
+$$
 
 in which all covariates are modeled flexibly by the neural network.
 
 This repository contains the reusable Python implementation, tests, and
 reproducible code and outputs for the simulation study and Rotterdam
-breast-cancer application described in the accompanying report.
+breast-cancer application described in the accompanying report. The report
+also provides full explanations of the package, the theoretical background
+and methodology behind FLEXI-Haz, implementation details, experimental
+design, and additional discussion of the empirical results.
 
 ## Main features
 
@@ -55,7 +58,7 @@ breast-cancer application described in the accompanying report.
 
 ## Repository structure
 
-``` text
+```text
 FLEXI-Haz/
 ├── README.md
 ├── pyproject.toml
@@ -90,13 +93,13 @@ FLEXI-Haz/
 
 From the repository root:
 
-``` bash
+```bash
 pip install -e .
 ```
 
 For a regular local installation:
 
-``` bash
+```bash
 pip install .
 ```
 
@@ -112,7 +115,7 @@ Some experiment baselines require additional packages such as
 Supply the flexible covariates through `X` and the covariates whose
 effects should remain linear through `Z`.
 
-``` python
+```python
 import numpy as np
 from flexihaz import FlexiHazardModel
 
@@ -145,15 +148,17 @@ print(model.theta_summary(alpha=0.05))
 
 The fitted log-hazard has the form
 
-\[ `\widehat{\eta}`{=tex}(t,X,Z) =
-`\widehat{\theta}`{=tex}\^{`\top`{=tex}}Z+`\widehat{g}`{=tex}(t,X). \]
+$$
+\widehat{\eta}(t,X,Z)=
+\widehat{\theta}^{\top}Z+\widehat{g}(t,X).
+$$
 
 ### Fully nonparametric FLEXI-Haz
 
 For the fully nonparametric model, combine all covariates and pass
 `Z=None`.
 
-``` python
+```python
 W = np.column_stack([X, Z])
 
 model_np = FlexiHazardModel(
@@ -179,7 +184,7 @@ survival_np = model_np.predict_survival(
 
 ### Hyperparameter tuning
 
-``` python
+```python
 from flexihaz import tune_flexihaz
 
 result = tune_flexihaz(
@@ -205,7 +210,7 @@ the fully nonparametric model.
 
 The main public objects are:
 
-``` python
+```python
 from flexihaz import FlexiHazardModel, tune_flexihaz
 ```
 
@@ -215,37 +220,17 @@ linear-coefficient refinement and inference, and prediction.
 
 The package is internally divided into focused modules:
 
-  -----------------------------------------------------------------------
-  Module                              Purpose
-  ----------------------------------- -----------------------------------
-  `estimator.py`                      Main estimator, fitting procedure,
-                                      prediction, and linear-coefficient
-                                      procedures
-
-  `networks.py`                       Neural networks for the flexible
-                                      hazard component and inference
-                                      projections
-
-  `data.py`                           Time-grid and expanded
-                                      interval-level dataset construction
-
-  `preprocessing.py`                  Input validation, administrative
-                                      truncation, and standardization
-
-  `loss.py`                           Discretized negative full
-                                      log-likelihood
-
-  `inference.py`                      Variance estimation and confidence
-                                      intervals for the linear
-                                      coefficient
-
-  `tuning.py`                         Optuna-based hyperparameter tuning
-
-  `utils.py`                          Device and reproducibility
-                                      utilities
-
-  `exceptions.py`                     Package-specific exceptions
-  -----------------------------------------------------------------------
+| Module | Purpose |
+| --- | --- |
+| `estimator.py` | Main estimator, fitting procedure, prediction, and linear-coefficient procedures |
+| `networks.py` | Neural networks for the flexible hazard component and inference projections |
+| `data.py` | Time-grid and expanded interval-level dataset construction |
+| `preprocessing.py` | Input validation, administrative truncation, and standardization |
+| `loss.py` | Discretized negative full log-likelihood |
+| `inference.py` | Variance estimation and confidence intervals for the linear coefficient |
+| `tuning.py` | Optuna-based hyperparameter tuning |
+| `utils.py` | Device and reproducibility utilities |
+| `exceptions.py` | Package-specific exceptions |
 
 ## Experiments
 
@@ -255,8 +240,8 @@ The repository contains two reproducible empirical evaluations under
 ### Simulation study
 
 The simulation study uses 200 independently generated training datasets
-with (n=8000), a fixed test set of 10,000 subjects, and administrative
-horizon (`\tau=10`{=tex}). It compares:
+with $n=8000$, a fixed test set of 10,000 subjects, and administrative
+horizon $\tau=10$. It compares:
 
 -   partially linear FLEXI-Haz;
 -   fully nonparametric FLEXI-Haz;
@@ -295,7 +280,7 @@ for details.
 
 Run the package test suite from the repository root with:
 
-``` bash
+```bash
 pytest
 ```
 
@@ -309,12 +294,14 @@ schedule, inference, tuning, device handling, and reproducibility.
 
 The accompanying report is available at:
 
-``` text
+```text
 docs/FLEXI_Haz_Report.pdf
 ```
 
-It contains the methodological formulation, implementation details,
-experimental design, and full empirical results.
+It contains a complete explanation of the package, the theoretical
+background and methodological formulation behind FLEXI-Haz, implementation
+details, experimental design, full empirical results, and additional
+discussion of the simulation and Rotterdam analyses.
 
 ## Reproducibility
 
