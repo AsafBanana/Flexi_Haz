@@ -11,8 +11,8 @@ $$
 \log h(t \mid X,Z)=\theta^\top Z+g(t,X).
 $$
 
-where selected covariates (Z) retain interpretable, time-constant
-log-hazard effects while a neural network (g(t,X)) captures nonlinear
+where selected covariates $Z$ retain interpretable, time-constant
+log-hazard effects while a neural network $g(t,X)$ captures nonlinear
 covariate effects, time dependence, and time-covariate interactions. The
 package also provides a fully nonparametric variant,
 
