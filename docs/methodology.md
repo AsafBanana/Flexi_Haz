@@ -6,9 +6,9 @@ This document summarizes the methodology implemented by the current package. The
 
 FLEXI-Haz models
 
-\[
+$$
 h(t\mid X,Z)=\exp\{\theta^\top Z+g(t,X)\},
-\]
+$$
 
 where `Z` enters through a separate linear term and `X` enters through a neural function of time and covariates.
 
@@ -18,9 +18,9 @@ This preserves interpretable effects for selected covariates while allowing the 
 
 When `Z=None`, the package fits
 
-\[
+$$
 h(t\mid X)=\exp\{g(t,X)\}.
-\]
+$$
 
 This variant removes the separate linear component and is intended for flexible hazard and survival modeling.
 
@@ -28,29 +28,28 @@ This variant removes the separate linear component and is intended for flexible 
 
 The estimator constructs a grid
 
-\[
-0=t_0<t_1<\cdots<t_m=\tau.
-\]
+$$
+0 = t_0 < t_1 < \cdots < t_m = \tau
+$$
 
-A subject contributes one expanded row for each at-risk interval. For interval \(j\),
+A subject contributes one expanded row for each at-risk interval. For interval $j$,
 
-\[
+$$
 w_{ij}=\min(T_i,t_j)-t_{j-1}
-\]
+$$
 
 is the exposure length, and the interval event indicator identifies whether the observed event occurred in that interval.
 
-The neural network is evaluated at the interval endpoint \(t_j\).
+The neural network is evaluated at the interval endpoint $t_j$.
 
 ## Full-likelihood objective
 
 For the partially linear model, the interval-level negative log-likelihood contribution is
 
-\[
-w_{ij}\exp\{\theta^\top Z_i+g(t_j,X_i)\}
--
+$$
+w_{ij}\exp\{\theta^\top Z_i+g(t_j,X_i)\}-
 \Delta_{ij}\{\theta^\top Z_i+g(t_j,X_i)\}.
-\]
+$$
 
 The fully nonparametric model uses the same likelihood without the linear term.
 
@@ -58,7 +57,7 @@ The fully nonparametric model uses the same likelihood without the linear term.
 
 `FlexiHazardNet` contains an MLP for the flexible component. Time is concatenated with the flexible covariates. When `scale_time=True`, the network receives time divided by the fitted administrative horizon.
 
-When `Z` is present, a separate bias-free linear layer represents \(\theta^\top Z\).
+When `Z` is present, a separate bias-free linear layer represents $\theta^\top Z$.
 
 ## Training
 
@@ -68,9 +67,9 @@ Validation splitting is performed at the subject level before the expanded rows 
 
 When `three_phase_lr=True`, training proceeds through three learning-rate phases based on
 
-\[
+$$
 \alpha,\quad 0.1\alpha,\quad 0.01\alpha.
-\]
+$$
 
 Each phase uses validation-based early stopping. The estimator retains the best model state.
 
@@ -93,8 +92,8 @@ The package exposes:
 
 Cumulative hazard is numerically accumulated on a grid combining the fitted time grid and requested prediction times, and survival is computed as
 
-\[
+$$
 \widehat S(t)=\exp\{-\widehat H(t)\}.
-\]
+$$
 
 For the complete methodological description and empirical evaluation, see `FLEXI_Haz_Report.pdf`.
