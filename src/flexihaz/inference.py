@@ -164,6 +164,89 @@ def estimate_theta_variance(
     return var_theta_hat, I_hat
 
 
+def crossfitted_score_residuals(
+    X_subj,
+    T_subj,
+    Z_subj,
+    delta_subj,
+    row_subject_pos,
+    X_rows,
+    t_rows,
+    *,
+    hidden_layers=(64, 64),
+    activation="relu",
+    dropout=0.0,
+    learning_rate=1e-3,
+    weight_decay=0.0,
+    batch_size=256,
+    max_epochs=300,
+    patience=30,
+    n_splits=5,
+    inner_val_fraction=0.2,
+    device="auto",
+    seed=123,
+):
+    """Cross-fitted residuals Z - E[Z | X, t] at every expanded row, for the efficient score.
+
+    Subjects (event and censored) are split into n_splits folds. For each fold, one
+    projection net per Z column is trained on the EVENT subjects of the other folds
+    (target Z at (X, T)), with an inner split of those subjects for early stopping, and
+    predicts every expanded row of the subjects in the held-out fold. So no residual is
+    ever predicted by a net that saw that subject.
+
+    X_subj, T_subj, Z_subj, delta_subj: subject-level arrays (T already on the network time scale).
+    row_subject_pos: for each expanded row, the position of its subject in the subject arrays.
+    X_rows, t_rows: expanded-row covariates and times (network time scale).
+    Returns R with shape (n_rows, p).
+    """
+    device = resolve_device(device)
+    X_subj = np.asarray(X_subj, dtype=np.float32)
+    T_subj = np.asarray(T_subj, dtype=np.float32).reshape(-1, 1)
+    Z_subj = np.asarray(Z_subj, dtype=np.float32)
+    if Z_subj.ndim == 1:
+        Z_subj = Z_subj.reshape(-1, 1)
+    delta_subj = np.asarray(delta_subj).reshape(-1)
+    row_subject_pos = np.asarray(row_subject_pos).reshape(-1)
+    X_rows = np.asarray(X_rows, dtype=np.float32)
+    t_rows = np.asarray(t_rows, dtype=np.float32).reshape(-1, 1)
+    Z_rows = Z_subj[row_subject_pos]
+
+    n_subj, p = Z_subj.shape
+    rng = np.random.default_rng(seed)
+    subj_fold = rng.integers(0, int(n_splits), size=n_subj)
+    row_fold = subj_fold[row_subject_pos]
+    R = np.zeros((X_rows.shape[0], p), dtype=np.float64)
+
+    for k in range(int(n_splits)):
+        fit_subj = np.where((subj_fold != k) & (delta_subj == 1))[0]
+        row_mask = row_fold == k
+        if fit_subj.size < 10 or not np.any(row_mask):
+            continue
+        perm = rng.permutation(fit_subj)
+        n_inner_val = max(1, int(inner_val_fraction * perm.size))
+        inner_va, inner_tr = perm[:n_inner_val], perm[n_inner_val:]
+        for j in range(p):
+            proj = ProjectionNet(X_subj.shape[1], hidden_layers=hidden_layers, activation=activation, dropout=dropout)
+            _fit_projection_net(
+                proj,
+                X_subj[inner_tr],
+                T_subj[inner_tr],
+                Z_subj[inner_tr, j],
+                X_subj[inner_va],
+                T_subj[inner_va],
+                Z_subj[inner_va, j],
+                device=device,
+                lr=learning_rate,
+                weight_decay=weight_decay,
+                batch_size=batch_size,
+                max_epochs=max_epochs,
+                patience=patience,
+            )
+            pred = _predict_projection(proj, X_rows[row_mask], t_rows[row_mask], device=device, batch_size=max(batch_size, 2048))
+            R[row_mask, j] = Z_rows[row_mask, j] - pred
+    return R
+
+
 def theta_confidence_interval(theta_hat, var_theta_hat, alpha=0.05):
     theta_hat = np.asarray(theta_hat, dtype=np.float64).reshape(-1)
     var_theta_hat = np.asarray(var_theta_hat, dtype=np.float64)

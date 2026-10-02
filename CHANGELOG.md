@@ -6,6 +6,11 @@ The format follows the principles of Keep a Changelog. Version numbers follow se
 
 ## [Unreleased]
 
+### Added
+
+- `n_restarts` and `restart_selection` options for `FlexiHazardModel`: fit several networks and keep the one with the lowest validation loss or the efficient score closest to zero, with per-restart diagnostics in `restart_results_`.
+- `--n-restarts` / `--restart-selection` options in the partially linear simulation runner.
+
 ### Planned
 
 - Public package release.

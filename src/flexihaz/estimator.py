@@ -9,7 +9,7 @@ import warnings
 
 from .data import build_time_grid, make_expanded_data
 from .exceptions import InputValidationError, NotFittedError
-from .inference import estimate_theta_variance, theta_confidence_interval
+from .inference import crossfitted_score_residuals, estimate_theta_variance, theta_confidence_interval
 from .loss import negative_log_likelihood
 from .networks import FlexiHazardNet
 from .preprocessing import Standardizer, validate_survival_inputs, truncate_at_tau
@@ -21,6 +21,15 @@ class FlexiHazardModel:
 
     If Z is None, fits h(t | X) = exp{g(t, X)}.
     If Z is provided, fits h(t | X, Z) = exp{theta^T Z + g(t, X)}.
+
+    n_restarts > 1 trains that many networks (seeds seed, seed+1, ...) on the same
+    train/validation split and keeps one, chosen by restart_selection:
+      "val_loss"        -- lowest validation loss of the final weights;
+      "efficient_score" -- efficient score for theta closest to zero (L2 norm over Z
+                           columns), using residuals Z - E[Z | X, t] cross-fitted over
+                           the internal training subjects (requires Z).
+    Per-restart diagnostics are stored in restart_results_ and the chosen index in
+    selected_restart_.
     """
 
     def __init__(
@@ -55,6 +64,8 @@ class FlexiHazardModel:
         non_blocking=None,
         epoch_callback=None,
         scale_time=True,
+        n_restarts=1,
+        restart_selection="val_loss",
     ):
         self.hidden_layers = tuple(hidden_layers)
         self.activation = activation
@@ -119,6 +130,15 @@ class FlexiHazardModel:
 
         self.scale_time = bool(scale_time)
         self.time_scale_: float | None = None
+
+        self.n_restarts = int(n_restarts)
+        self.restart_selection = str(restart_selection)
+        if self.n_restarts < 1:
+            raise InputValidationError("n_restarts must be a positive integer.")
+        if self.restart_selection not in {"val_loss", "efficient_score"}:
+            raise InputValidationError("restart_selection must be 'val_loss' or 'efficient_score'.")
+        self.restart_results_: list[dict] | None = None
+        self.selected_restart_: int | None = None
 
         self.net_: FlexiHazardNet | None = None
         self.g_network = None
@@ -193,17 +213,8 @@ class FlexiHazardModel:
         self.time_grid = build_time_grid(T, tau, self.grid_size, self.include_observed_times)
         expanded = make_expanded_data(T, delta, X_scaled, Z_scaled, self.time_grid)
 
-        self.net_ = FlexiHazardNet(
-            x_dim=X_scaled.shape[1],
-            z_dim=None if Z_scaled is None else Z_scaled.shape[1],
-            hidden_layers=self.hidden_layers,
-            activation=self.activation,
-            dropout=self.dropout,
-        ).to(self.device)
-
-        if self.has_linear_:
-            self._initialize_theta_from_cox(T, delta, Z, Z_scaled)
-
+        # The split does not touch the torch RNG, so doing it before building the
+        # network leaves the single-restart fit identical to before.
         train_idx, val_idx = self._train_val_indices(expanded["subject_id"])
 
         train_subject_ids = np.unique(expanded["subject_id"][train_idx]).astype(int)
@@ -212,10 +223,15 @@ class FlexiHazardModel:
         self.internal_train_subject_ids_ = train_subject_ids
         self.internal_val_subject_ids_ = val_subject_ids
 
-        self._fit_expanded_phases(expanded, train_idx, val_idx)
-
-        if self.has_linear_ and self.refine_theta and not self.three_phase_lr:
-            self._refine_theta(expanded)
+        if self.n_restarts == 1:
+            self._build_net(X_scaled, Z_scaled)
+            if self.has_linear_:
+                self._initialize_theta_from_cox(T, delta, Z, Z_scaled)
+            self._train_current_net(expanded, train_idx, val_idx)
+            self.restart_results_ = None
+            self.selected_restart_ = 0
+        else:
+            self._fit_restarts(expanded, train_idx, val_idx, T, delta, X_scaled, Z, Z_scaled)
 
         self.theta_hat = None if not self.has_linear_ else self.net_.theta()
         if self.theta_hat is not None and self.z_scaler_ is not None:
@@ -270,6 +286,114 @@ class FlexiHazardModel:
         self.Z_train_scaled_ = None if Z_scaled is None else Z_scaled.astype(np.float32)
         self.is_fitted_ = True
         return self
+
+    def _build_net(self, X_scaled, Z_scaled):
+        self.net_ = FlexiHazardNet(
+            x_dim=X_scaled.shape[1],
+            z_dim=None if Z_scaled is None else Z_scaled.shape[1],
+            hidden_layers=self.hidden_layers,
+            activation=self.activation,
+            dropout=self.dropout,
+        ).to(self.device)
+
+    def _train_current_net(self, expanded, train_idx, val_idx):
+        self._fit_expanded_phases(expanded, train_idx, val_idx)
+
+        if self.has_linear_ and self.refine_theta and not self.three_phase_lr:
+            self._refine_theta(expanded)
+
+    def _fit_restarts(self, expanded, train_idx, val_idx, T, delta, X_scaled, Z, Z_scaled):
+        """Train n_restarts networks on the same split; keep the one picked by restart_selection."""
+        val_data = self._tensors_from_expanded(expanded, val_idx)
+        results, states, histories = [], [], []
+        for k in range(self.n_restarts):
+            # restart 0 continues the RNG stream seeded at the top of fit(), so it is
+            # exactly the single-restart fit; later restarts reseed with seed + k.
+            if k > 0 and self.seed is not None:
+                set_seed(self.seed + k)
+            self._build_net(X_scaled, Z_scaled)
+            if self.has_linear_:
+                if k == 0:
+                    self._initialize_theta_from_cox(T, delta, Z, Z_scaled)
+                else:
+                    with torch.no_grad():
+                        self.net_.linear.weight.copy_(
+                            torch.as_tensor(self.theta_init_.reshape(1, -1), dtype=torch.float32, device=self.device)
+                        )
+            self._train_current_net(expanded, train_idx, val_idx)
+
+            rec = {
+                "restart": k,
+                "seed": None if self.seed is None else self.seed + k,
+                "val_loss": float(self._validation_loss(val_data)),
+            }
+            if self.has_linear_:
+                theta = self.net_.theta()
+                if self.z_scaler_ is not None:
+                    theta = theta / self.z_scaler_.scale_.reshape(-1)
+                rec["theta"] = np.asarray(theta, dtype=np.float64)
+            results.append(rec)
+            states.append(copy.deepcopy(self.net_.state_dict()))
+            histories.append((self.train_history, self.phase_histories_, self.learning_rate_phases_used_))
+
+        use_score = self.restart_selection == "efficient_score" and self.has_linear_
+        if self.restart_selection == "efficient_score" and not self.has_linear_:
+            warnings.warn("restart_selection='efficient_score' needs Z; selecting by validation loss instead.")
+        if use_score:
+            # residuals are computed after all restarts are trained so that restart 0 is
+            # unaffected by the extra RNG draws of the projection nets
+            R_rows = self._score_residuals(expanded, train_idx, T, delta, X_scaled, Z_scaled)
+            for rec, state in zip(results, states):
+                self.net_.load_state_dict(state)
+                score = self._efficient_score(expanded, train_idx, R_rows)
+                rec["score"] = score
+                rec["score_norm"] = float(np.linalg.norm(score))
+            best = int(np.argmin([r["score_norm"] for r in results]))
+        else:
+            best = int(np.argmin([r["val_loss"] for r in results]))
+
+        self.net_.load_state_dict(states[best])
+        self.train_history, self.phase_histories_, self.learning_rate_phases_used_ = histories[best]
+        self.restart_results_ = results
+        self.selected_restart_ = best
+
+    def _score_residuals(self, expanded, train_idx, T, delta, X_scaled, Z_scaled):
+        subj = self.internal_train_subject_ids_
+        pos = np.full(int(np.max(expanded["subject_id"])) + 1, -1, dtype=np.int64)
+        pos[subj] = np.arange(subj.size)
+        row_pos = pos[expanded["subject_id"][train_idx]]
+        return crossfitted_score_residuals(
+            X_scaled[subj],
+            self._prepare_time_for_network(T[subj]),
+            Z_scaled[subj],
+            delta[subj],
+            row_pos,
+            expanded["X"][train_idx],
+            self._prepare_time_for_network(expanded["t"][train_idx]),
+            hidden_layers=self.hidden_layers,
+            activation=self.activation,
+            dropout=self.dropout,
+            learning_rate=self.learning_rate,
+            weight_decay=self.weight_decay,
+            batch_size=min(self.batch_size, 2048),
+            max_epochs=self.projection_max_epochs,
+            patience=self.projection_patience,
+            n_splits=self.projection_n_splits,
+            device=self.device,
+            seed=0 if self.seed is None else self.seed,
+        )
+
+    def _efficient_score(self, expanded, train_idx, R_rows):
+        """sum over training rows of R_i * (length_i * exp(eta_i) - event_i) for the current net."""
+        X = expanded["X"][train_idx]
+        t = expanded["t"][train_idx]
+        Z = expanded["Z"][train_idx].astype(np.float64)
+        event = expanded["event"][train_idx].astype(np.float64).reshape(-1, 1)
+        length = expanded["length"][train_idx].astype(np.float64).reshape(-1, 1)
+        g = self._predict_g_on_pairs(X, t, batch_size=self.batch_size).reshape(-1, 1)
+        theta = self.net_.theta().astype(np.float64).reshape(-1, 1)
+        eta = np.clip(g + Z @ theta, -80.0, 80.0)
+        return np.sum(R_rows * (length * np.exp(eta) - event), axis=0)
 
     def _train_val_indices(self, subject_id):
         if self.validation_fraction <= 0:

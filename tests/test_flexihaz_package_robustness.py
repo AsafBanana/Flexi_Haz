@@ -734,3 +734,73 @@ def test_set_seed_reproducibility_for_numpy_and_torch():
 
     assert np.allclose(a_np, b_np)
     assert torch.allclose(a_torch, b_torch)
+
+
+# -----------------------------------------------------------------------------
+# Multiple restarts (n_restarts / restart_selection)
+# -----------------------------------------------------------------------------
+
+
+def test_n_restarts_one_matches_default_fit():
+    T, delta, X, Z = small_survival_data(n=40, linear=True)
+
+    default = FlexiHazardModel(**tiny_model_kwargs()).fit(T, delta, X, Z=Z)
+    single = FlexiHazardModel(**tiny_model_kwargs(n_restarts=1)).fit(T, delta, X, Z=Z)
+
+    np.testing.assert_allclose(default.theta_hat, single.theta_hat, rtol=0, atol=0)
+    assert single.selected_restart_ == 0
+    assert single.restart_results_ is None
+
+
+def test_restarts_val_loss_keeps_lowest_validation_loss():
+    T, delta, X, Z = small_survival_data(n=40, linear=True)
+
+    single = FlexiHazardModel(**tiny_model_kwargs()).fit(T, delta, X, Z=Z)
+    model = FlexiHazardModel(**tiny_model_kwargs(n_restarts=3, restart_selection="val_loss")).fit(T, delta, X, Z=Z)
+
+    results = model.restart_results_
+    assert len(results) == 3
+    assert [r["seed"] for r in results] == [123, 124, 125]
+    best = int(np.argmin([r["val_loss"] for r in results]))
+    assert model.selected_restart_ == best
+    np.testing.assert_allclose(model.theta_hat_original_scale, results[best]["theta"], rtol=1e-6, atol=1e-6)
+    # restart 0 is exactly the single fit
+    np.testing.assert_allclose(results[0]["theta"], single.theta_hat_original_scale, rtol=1e-6, atol=1e-6)
+
+
+def test_restarts_efficient_score_keeps_smallest_score_norm():
+    T, delta, X, Z = small_survival_data(n=80, linear=True)
+
+    model = FlexiHazardModel(
+        **tiny_model_kwargs(
+            n_restarts=3,
+            restart_selection="efficient_score",
+            projection_n_splits=2,
+            projection_max_epochs=3,
+            projection_patience=2,
+        )
+    ).fit(T, delta, X, Z=Z)
+
+    results = model.restart_results_
+    assert all(np.isfinite(r["score_norm"]) and r["score"].shape == (Z.shape[1],) for r in results)
+    best = int(np.argmin([r["score_norm"] for r in results]))
+    assert model.selected_restart_ == best
+    np.testing.assert_allclose(model.theta_hat_original_scale, results[best]["theta"], rtol=1e-6, atol=1e-6)
+
+
+def test_efficient_score_selection_without_z_falls_back_to_val_loss():
+    T, delta, X = small_survival_data(n=40, linear=False)
+
+    with pytest.warns(UserWarning, match="needs Z"):
+        model = FlexiHazardModel(
+            **tiny_model_kwargs(n_restarts=2, restart_selection="efficient_score")
+        ).fit(T, delta, X)
+
+    best = int(np.argmin([r["val_loss"] for r in model.restart_results_]))
+    assert model.selected_restart_ == best
+
+
+@pytest.mark.parametrize("kwargs", [dict(n_restarts=0), dict(restart_selection="score")])
+def test_invalid_restart_arguments_raise(kwargs):
+    with pytest.raises(InputValidationError):
+        FlexiHazardModel(**tiny_model_kwargs(**kwargs))

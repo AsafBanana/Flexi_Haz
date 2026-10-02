@@ -8,6 +8,10 @@ Smoke test:
 Full run in parts:
     python run_flexihaz_pl_replications.py --start-rep 0 --end-rep 50
     python run_flexihaz_pl_replications.py --start-rep 50 --end-rep 100
+
+K restarts per replication, keeping the one chosen by validation loss or by the
+efficient score (outputs go to a separate model folder, e.g. flexihaz_partial_linear_k5_efficient_score):
+    python run_flexihaz_pl_replications.py --n-restarts 5 --restart-selection efficient_score
 """
 
 from __future__ import annotations
@@ -75,6 +79,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--save-predictions", action="store_true")
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--n-restarts", type=int, default=1,
+                        help="number of network restarts per replication (1 = original single fit)")
+    parser.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default="val_loss",
+                        help="how to choose among restarts: lowest validation loss, or efficient score closest to 0")
     return parser.parse_args()
 
 
@@ -90,8 +98,13 @@ def main() -> None:
         args.projection_patience = min(args.projection_patience, 2)
         args.projection_n_splits = 2
 
+    # keep K-restart runs apart from the single-fit results
+    model_name = MODEL_NAME
+    if args.n_restarts > 1:
+        model_name = f"{MODEL_NAME}_k{args.n_restarts}_{args.restart_selection}"
+
     output_dir = Path(args.output_dir)
-    ensure_dir(replication_dir(output_dir, MODEL_NAME))
+    ensure_dir(replication_dir(output_dir, model_name))
 
     params_path = Path(args.params_path) if args.params_path else output_dir / "tuning" / "flexihaz_partial_linear_best_params.json"
     best_params = load_best_params(params_path)
@@ -108,11 +121,11 @@ def main() -> None:
     S_true = test["true_survival"]
 
     for rep_id in range(args.start_rep, args.end_rep):
-        if args.skip_completed and not args.overwrite and completed(output_dir, MODEL_NAME, rep_id):
+        if args.skip_completed and not args.overwrite and completed(output_dir, model_name, rep_id):
             print(f"rep={rep_id:03d} already completed, skipping")
             continue
 
-        print(f"Running {MODEL_NAME}, rep={rep_id:03d}")
+        print(f"Running {model_name}, rep={rep_id:03d}")
         try:
             train = load_train_dataset(output_dir, rep_id)
             T, delta, X, Z = train["T"], train["delta"], train["X"], train["Z"]
@@ -138,6 +151,8 @@ def main() -> None:
                 persistent_workers=True,
                 non_blocking=True,
                 three_phase_lr=True,
+                n_restarts=args.n_restarts,
+                restart_selection=args.restart_selection,
             )
 
             t0 = time.perf_counter()
@@ -149,9 +164,9 @@ def main() -> None:
             prediction_time = time.perf_counter() - t1
 
             theta_df, theta_summary_extra = theta_metrics_from_model(
-                model, model_name=MODEL_NAME, rep_id=rep_id, theta_true=train["theta_true"]
+                model, model_name=model_name, rep_id=rep_id, theta_true=train["theta_true"]
             )
-            theta_df.to_csv(rep_theta_path(output_dir, MODEL_NAME, rep_id), index=False)
+            theta_df.to_csv(rep_theta_path(output_dir, model_name, rep_id), index=False)
 
             extra = {
                 "n_train": int(T.shape[0]),
@@ -162,9 +177,20 @@ def main() -> None:
                 "params_path": str(params_path),
                 **theta_summary_extra,
             }
+            if model.restart_results_ is not None:
+                extra["n_restarts"] = args.n_restarts
+                extra["restart_selection"] = args.restart_selection
+                extra["selected_restart"] = int(model.selected_restart_)
+                for r in model.restart_results_:
+                    k = r["restart"]
+                    extra[f"restart{k}_val_loss"] = r["val_loss"]
+                    for j, th in enumerate(r.get("theta", [])):
+                        extra[f"restart{k}_theta_{j}"] = float(th)
+                    if "score_norm" in r:
+                        extra[f"restart{k}_score_norm"] = r["score_norm"]
 
             summary, bias_df, auc_df, brier_df = evaluate_survival_predictions(
-                model_name=MODEL_NAME,
+                model_name=model_name,
                 rep_id=rep_id,
                 train_T=T,
                 train_delta=delta,
@@ -178,26 +204,26 @@ def main() -> None:
                 prediction_time_sec=prediction_time,
                 extra_summary=extra,
             )
-            write_summary_row(rep_summary_path(output_dir, MODEL_NAME, rep_id), summary)
-            bias_df.to_csv(rep_bias_path(output_dir, MODEL_NAME, rep_id), index=False)
-            auc_df.to_csv(rep_auc_path(output_dir, MODEL_NAME, rep_id), index=False)
-            brier_df.to_csv(rep_brier_path(output_dir, MODEL_NAME, rep_id), index=False)
+            write_summary_row(rep_summary_path(output_dir, model_name, rep_id), summary)
+            bias_df.to_csv(rep_bias_path(output_dir, model_name, rep_id), index=False)
+            auc_df.to_csv(rep_auc_path(output_dir, model_name, rep_id), index=False)
+            brier_df.to_csv(rep_brier_path(output_dir, model_name, rep_id), index=False)
             if args.save_predictions:
-                np.savez_compressed(rep_predictions_path(output_dir, MODEL_NAME, rep_id), S_hat=S_hat)
+                np.savez_compressed(rep_predictions_path(output_dir, model_name, rep_id), S_hat=S_hat)
 
-            save_json(rep_log_path(output_dir, MODEL_NAME, rep_id), {"status": "success", "rep_id": rep_id})
+            save_json(rep_log_path(output_dir, model_name, rep_id), {"status": "success", "rep_id": rep_id})
             print(f"rep={rep_id:03d} done, ibs={summary['ibs']}, c_index={summary['c_index']}")
 
         except Exception as exc:  # noqa: BLE001
             error_row = {
-                "model": MODEL_NAME,
+                "model": model_name,
                 "rep_id": int(rep_id),
                 "status": "failed",
                 "error_type": type(exc).__name__,
                 "error_message": str(exc),
             }
-            write_summary_row(rep_summary_path(output_dir, MODEL_NAME, rep_id), error_row)
-            save_json(rep_log_path(output_dir, MODEL_NAME, rep_id), error_row)
+            write_summary_row(rep_summary_path(output_dir, model_name, rep_id), error_row)
+            save_json(rep_log_path(output_dir, model_name, rep_id), error_row)
             print(f"rep={rep_id:03d} failed: {type(exc).__name__}: {exc}")
 
 

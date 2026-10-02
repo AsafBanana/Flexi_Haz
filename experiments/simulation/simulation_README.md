@@ -263,6 +263,18 @@ Partially linear FLEXI-Haz:
 python run_flexihaz_pl_replications.py --start-rep 0 --end-rep 200
 ```
 
+To fit several networks per replication and keep one, chosen by validation
+loss or by the efficient score for the linear coefficients:
+
+``` bash
+python run_flexihaz_pl_replications.py --start-rep 0 --end-rep 200 \
+    --n-restarts 5 --restart-selection efficient_score
+```
+
+These runs are written to a separate model folder
+(`flexihaz_partial_linear_k5_efficient_score`), and each replication summary
+records every restart's validation loss, coefficients and score.
+
 Fully nonparametric FLEXI-Haz:
 
 ``` bash
