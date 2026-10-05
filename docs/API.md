@@ -75,6 +75,8 @@ FlexiHazardModel(
     scale_time=True,
     n_restarts=1,
     restart_selection="val_loss",
+    theta_lr_multiplier=1.0,
+    model_type="flexihaz",
 )
 ```
 
@@ -107,6 +109,28 @@ With `n_restarts > 1`, steps 7–9 are repeated for `n_restarts` networks initia
 - `restart_selection="efficient_score"` keeps the network whose efficient score for `theta` is closest to zero (Euclidean norm over the columns of `Z`). The score uses residuals `Z - E[Z | X, t]` that are cross-fitted over the internal training subjects, so no residual is predicted by a projection network trained on that subject. It requires `Z`; without `Z` the estimator warns and selects by validation loss.
 
 Restart 0 is identical to the single fit. After fitting, `model.restart_results_` lists each restart's seed, validation loss, `theta` (original scale) and, for score selection, the score and its norm; `model.selected_restart_` is the chosen index. `n_restarts=1` (the default) leaves both at their single-fit values (`None` and `0`).
+
+### Learning-rate multiplier for `theta`
+
+`theta_lr_multiplier` (default `1.0`) trains the linear branch with learning rate `learning_rate * theta_lr_multiplier`, as a separate Adam parameter group; the neural component keeps `learning_rate`. The multiplier applies in every phase of the three-phase schedule. With `1.0` the fit is identical to the default. It has no effect when `Z` is `None`.
+
+### Zhong et al. (2022) proportional-hazards model
+
+`model_type="zhong"` fits the partially linear Cox model of Zhong, Mueller and Wang (2022) with the same estimator interface:
+
+$$
+h(t\mid X,Z)=h_0(t)\exp\{\theta^\top Z+g(X)\}.
+$$
+
+Differences from the default `model_type="flexihaz"`:
+
+- the network `g` takes only `X` (no time input), so the hazard is proportional;
+- there is no interval expansion: the model is trained on one row per subject, full-batch, with the Breslow partial likelihood (no ties); `batch_size`, `grid_size` and `include_observed_times` do not affect training;
+- `refine_theta` maximises the partial likelihood over `theta` with `g` fixed;
+- the projection networks used for `var_theta_hat` and for `restart_selection="efficient_score"` are additive, `g_X(X) + g_T(t)`, with no `X`–`t` interaction, as in that paper; the efficient score is the partial-likelihood score with `Z` replaced by its cross-fitted residual;
+- `predict_cumulative_hazard` and `predict_survival` use the Breslow baseline cumulative hazard of the fitted data, `predict_g` returns `g(X)` repeated over `times`, and `predict_hazard` raises an input-validation error (the baseline hazard is a step function).
+
+Early stopping, the learning-rate phases, Cox initialization, `n_restarts`, `theta_lr_multiplier` and the covariance estimator work as for the default model. Zhong et al. train with `max_epochs=5000`, `patience=35` and one full-batch step per epoch, so consider raising `max_epochs` for this model.
 
 When `theta_init="cox"`, the estimator attempts Cox initialization through `lifelines`. If that import or fit fails, the current implementation warns and falls back to zero initialization.
 

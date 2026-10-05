@@ -804,3 +804,177 @@ def test_efficient_score_selection_without_z_falls_back_to_val_loss():
 def test_invalid_restart_arguments_raise(kwargs):
     with pytest.raises(InputValidationError):
         FlexiHazardModel(**tiny_model_kwargs(**kwargs))
+
+
+# -----------------------------------------------------------------------------
+# theta learning-rate multiplier
+# -----------------------------------------------------------------------------
+
+
+def test_theta_lr_multiplier_one_matches_default_fit():
+    T, delta, X, Z = small_survival_data(n=40, linear=True)
+
+    default = FlexiHazardModel(**tiny_model_kwargs()).fit(T, delta, X, Z=Z)
+    same = FlexiHazardModel(**tiny_model_kwargs(theta_lr_multiplier=1.0)).fit(T, delta, X, Z=Z)
+
+    np.testing.assert_allclose(default.theta_hat, same.theta_hat, rtol=0, atol=0)
+
+
+def test_theta_lr_multiplier_changes_only_the_linear_branch_rate():
+    T, delta, X, Z = small_survival_data(n=40, linear=True)
+
+    model = FlexiHazardModel(**tiny_model_kwargs(theta_lr_multiplier=20.0, learning_rate=1e-3))
+    model.fit(T, delta, X, Z=Z)
+    assert np.all(np.isfinite(model.theta_hat))
+
+    opt = model._make_optimizer(1e-3)
+    assert len(opt.param_groups) == 2
+    lin_ids = {id(p) for p in model.net_.linear.parameters()}
+    net_group, lin_group = opt.param_groups
+    assert net_group["lr"] == pytest.approx(1e-3)
+    assert lin_group["lr"] == pytest.approx(20e-3)
+    assert {id(p) for p in lin_group["params"]} == lin_ids
+    assert not any(id(p) in lin_ids for p in net_group["params"])
+
+
+def test_theta_lr_multiplier_without_z_uses_single_group():
+    T, delta, X = small_survival_data(n=40, linear=False)
+    model = FlexiHazardModel(**tiny_model_kwargs(theta_lr_multiplier=5.0)).fit(T, delta, X)
+    assert len(model._make_optimizer(1e-3).param_groups) == 1
+
+
+@pytest.mark.parametrize("mult", [0.0, -2.0, float("nan")])
+def test_invalid_theta_lr_multiplier_raises(mult):
+    with pytest.raises(InputValidationError):
+        FlexiHazardModel(**tiny_model_kwargs(theta_lr_multiplier=mult))
+
+
+# -----------------------------------------------------------------------------
+# model_type="zhong" (Zhong et al. 2022 proportional-hazards model)
+# -----------------------------------------------------------------------------
+
+
+def zhong_kwargs(**overrides):
+    kwargs = tiny_model_kwargs(model_type="zhong", max_epochs=5, patience=3)
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_zhong_network_ignores_time_and_projection_is_additive():
+    from flexihaz.networks import AdditiveProjectionNet, ZhongPHNet
+
+    net = ZhongPHNet(x_dim=3, z_dim=2, hidden_layers=(4,))
+    X = torch.randn(5, 3)
+    Z = torch.randn(5, 2)
+    eta_a, g_a = net(torch.zeros(5, 1), X, Z)
+    eta_b, g_b = net(torch.ones(5, 1), X, Z)
+    assert torch.allclose(eta_a, eta_b) and torch.allclose(g_a, g_b)
+    assert eta_a.shape == (5, 1)
+
+    proj = AdditiveProjectionNet(x_dim=3, hidden_layers=(4,))
+    t = torch.randn(5, 1)
+    out = proj(t, X)
+    # no X-t interaction: changing X shifts the output by the same amount at every t
+    X2 = X + 1.0
+    diff = proj(t, X2) - out
+    assert torch.allclose(diff, diff[:1].expand_as(diff) * 0 + diff, atol=1e-6)
+    assert torch.allclose(proj(t, X2) - proj(t, X), proj(t + 1.0, X2) - proj(t + 1.0, X), atol=1e-5)
+
+
+def test_cox_partial_likelihood_loss_matches_direct_formula():
+    from flexihaz.loss import cox_partial_likelihood_loss
+
+    rng = np.random.default_rng(0)
+    T = rng.uniform(0.1, 3.0, size=12)
+    d = rng.integers(0, 2, size=12).astype(np.float64)
+    d[0] = 1.0
+    eta = rng.normal(size=12)
+    ll = 0.0
+    for i in range(12):
+        if d[i] == 1:
+            ll += eta[i] - np.log(np.sum(np.exp(eta[T >= T[i]])))
+    expected = -ll / d.sum()
+    got = cox_partial_likelihood_loss(torch.as_tensor(eta).reshape(-1, 1), torch.as_tensor(T), torch.as_tensor(d))
+    assert float(got) == pytest.approx(expected, rel=1e-6)
+
+
+def test_zhong_fit_trains_on_subject_rows_and_predicts():
+    T, delta, X, Z = small_survival_data(n=40, linear=True)
+    model = FlexiHazardModel(**zhong_kwargs(compute_theta_variance=True, projection_n_splits=2,
+                                            projection_max_epochs=3, projection_patience=2, refine_theta=True))
+    model.fit(T, delta, X, Z=Z)
+
+    assert model.model_type == "zhong"
+    assert model.theta_hat_original_scale.shape == (2,)
+    assert np.all(np.isfinite(model.theta_hat_original_scale))
+    assert model.var_theta_hat.shape == (2, 2) and np.all(np.diag(model.var_theta_hat) > 0)
+
+    times = np.linspace(0.0, model.tau, 5)
+    g = model.predict_g(X[:3], times)
+    assert g.shape == (3, 5)
+    # g has no time input, so it is constant across the time axis
+    np.testing.assert_allclose(g, np.repeat(g[:, :1], 5, axis=1), rtol=0, atol=0)
+
+    H = model.predict_cumulative_hazard(X[:3], times, Z_new=Z[:3])
+    S = model.predict_survival(X[:3], times, Z_new=Z[:3])
+    assert H.shape == (3, 5) and S.shape == (3, 5)
+    assert np.all(H[:, 0] == 0.0) and np.all(np.diff(H, axis=1) >= 0)
+    assert np.all((S >= 0) & (S <= 1)) and np.all(S[:, 0] == 1.0)
+    # Breslow: cumulative hazard is proportional across subjects
+    pos = H[0] > 0
+    assert pos.sum() >= 2
+    ratio = H[1:, pos] / H[:1, pos]
+    np.testing.assert_allclose(ratio, np.repeat(ratio[:, :1], ratio.shape[1], axis=1), rtol=1e-5)
+
+    with pytest.raises(InputValidationError, match="predict_hazard"):
+        model.predict_hazard(X[:3], times, Z_new=Z[:3])
+
+
+def test_zhong_without_z_fits_nonparametric_ph():
+    T, delta, X = small_survival_data(n=40, linear=False)
+    model = FlexiHazardModel(**zhong_kwargs()).fit(T, delta, X)
+    assert model.theta_hat is None
+    S = model.predict_survival(X[:2], np.linspace(0.0, model.tau, 4))
+    assert S.shape == (2, 4)
+
+
+def test_zhong_restarts_with_efficient_score():
+    T, delta, X, Z = small_survival_data(n=80, linear=True)
+    model = FlexiHazardModel(
+        **zhong_kwargs(n_restarts=3, restart_selection="efficient_score",
+                       projection_n_splits=2, projection_max_epochs=3, projection_patience=2)
+    ).fit(T, delta, X, Z=Z)
+    results = model.restart_results_
+    assert len(results) == 3
+    assert all(np.isfinite(r["score_norm"]) and r["score"].shape == (Z.shape[1],) for r in results)
+    best = int(np.argmin([r["score_norm"] for r in results]))
+    assert model.selected_restart_ == best
+    np.testing.assert_allclose(model.theta_hat_original_scale, results[best]["theta"], rtol=1e-6, atol=1e-6)
+
+
+def test_zhong_refine_theta_maximises_profile_partial_likelihood():
+    from flexihaz.loss import cox_partial_likelihood_loss
+
+    T, delta, X, Z = small_survival_data(n=60, linear=True)
+    model = FlexiHazardModel(**zhong_kwargs(refine_theta=True, three_phase_lr=False)).fit(T, delta, X, Z=Z)
+    rows = model._subject_rows(T, delta, model.X_train_scaled_, model.Z_train_scaled_)
+    g = model._predict_g_on_pairs(rows["X"], rows["t"], batch_size=model.batch_size).reshape(-1, 1)
+    Zs = rows["Z"].astype(np.float64)
+    T_t, d_t = torch.as_tensor(T), torch.as_tensor(delta, dtype=torch.float64)
+
+    def loss_at(theta):
+        eta = torch.as_tensor(g + Zs @ theta.reshape(-1, 1))
+        return float(cox_partial_likelihood_loss(eta, T_t, d_t))
+
+    theta_hat = model.theta_hat.astype(np.float64)
+    at_hat = loss_at(theta_hat)
+    for shift in (0.2, -0.2):
+        for j in range(theta_hat.size):
+            other = theta_hat.copy()
+            other[j] += shift
+            assert loss_at(other) >= at_hat - 1e-6
+
+
+def test_invalid_model_type_raises():
+    with pytest.raises(InputValidationError):
+        FlexiHazardModel(**tiny_model_kwargs(model_type="cox"))

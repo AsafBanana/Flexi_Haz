@@ -9,8 +9,18 @@ from scipy.stats import norm
 
 from .exceptions import InputValidationError
 
-from .networks import ProjectionNet
+from .networks import AdditiveProjectionNet, ProjectionNet
 from .utils import resolve_device
+
+
+def _make_projection_net(projection_net, x_dim, hidden_layers, activation, dropout):
+    """'joint': ProjectionNet on (t, X); 'additive': g_X(X) + g_T(t) as in Zhong et al. (2022)."""
+    kind = str(projection_net).lower()
+    if kind == "joint":
+        return ProjectionNet(x_dim, hidden_layers=hidden_layers, activation=activation, dropout=dropout)
+    if kind == "additive":
+        return AdditiveProjectionNet(x_dim, hidden_layers=hidden_layers, activation=activation, dropout=dropout)
+    raise InputValidationError("projection_net must be 'joint' or 'additive'.")
 
 
 def _iter_batches(tensors: dict, batch_size: int, shuffle: bool):
@@ -99,9 +109,14 @@ def estimate_theta_variance(
     n_splits=5,
     ridge=1e-8,
     device="auto",
-    seed=123
+    seed=123,
+    projection_net="joint",
 ):
-    """Estimate Var(theta_hat) by the event-weighted residual projection described in FLEXI-Haz."""
+    """Estimate Var(theta_hat) by the event-weighted residual projection described in FLEXI-Haz.
+
+    projection_net: "joint" (default) fits E[Z | X, t] with one network on (t, X);
+    "additive" uses g_X(X) + g_T(t) with no interaction (Zhong et al., 2022).
+    """
     device = resolve_device(device)
     T = np.asarray(T, dtype=np.float32).reshape(-1, 1)
     delta = np.asarray(delta, dtype=np.int64).reshape(-1)
@@ -136,7 +151,7 @@ def estimate_theta_variance(
 
     for tr, va in kf.split(event_idx):
         for j in range(p):
-            proj = ProjectionNet(X.shape[1], hidden_layers=hidden_layers, activation=activation, dropout=dropout)
+            proj = _make_projection_net(projection_net, X.shape[1], hidden_layers, activation, dropout)
             _fit_projection_net(
                 proj,
                 X_ev[tr],
@@ -185,6 +200,7 @@ def crossfitted_score_residuals(
     inner_val_fraction=0.2,
     device="auto",
     seed=123,
+    projection_net="joint",
 ):
     """Cross-fitted residuals Z - E[Z | X, t] at every expanded row, for the efficient score.
 
@@ -197,6 +213,7 @@ def crossfitted_score_residuals(
     X_subj, T_subj, Z_subj, delta_subj: subject-level arrays (T already on the network time scale).
     row_subject_pos: for each expanded row, the position of its subject in the subject arrays.
     X_rows, t_rows: expanded-row covariates and times (network time scale).
+    projection_net: "joint" (one network on (t, X)) or "additive" (g_X(X) + g_T(t), Zhong et al. 2022).
     Returns R with shape (n_rows, p).
     """
     device = resolve_device(device)
@@ -226,7 +243,7 @@ def crossfitted_score_residuals(
         n_inner_val = max(1, int(inner_val_fraction * perm.size))
         inner_va, inner_tr = perm[:n_inner_val], perm[n_inner_val:]
         for j in range(p):
-            proj = ProjectionNet(X_subj.shape[1], hidden_layers=hidden_layers, activation=activation, dropout=dropout)
+            proj = _make_projection_net(projection_net, X_subj.shape[1], hidden_layers, activation, dropout)
             _fit_projection_net(
                 proj,
                 X_subj[inner_tr],

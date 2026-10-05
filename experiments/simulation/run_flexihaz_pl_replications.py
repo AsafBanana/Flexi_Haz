@@ -12,6 +12,12 @@ Full run in parts:
 K restarts per replication, keeping the one chosen by validation loss or by the
 efficient score (outputs go to a separate model folder, e.g. flexihaz_partial_linear_k5_efficient_score):
     python run_flexihaz_pl_replications.py --n-restarts 5 --restart-selection efficient_score
+
+Faster learning rate for theta (model folder gets a _thetalr20 suffix):
+    python run_flexihaz_pl_replications.py --theta-lr-mult 20
+
+Zhong et al. (2022) proportional-hazards model through the same estimator (model folder flexihaz_zhong_ph...):
+    python run_flexihaz_pl_replications.py --model-type zhong
 """
 
 from __future__ import annotations
@@ -83,6 +89,10 @@ def parse_args() -> argparse.Namespace:
                         help="number of network restarts per replication (1 = original single fit)")
     parser.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default="val_loss",
                         help="how to choose among restarts: lowest validation loss, or efficient score closest to 0")
+    parser.add_argument("--theta-lr-mult", type=float, default=1.0,
+                        help="learning-rate multiplier for the linear (theta) branch (1 = same rate as the network)")
+    parser.add_argument("--model-type", choices=["flexihaz", "zhong"], default="flexihaz",
+                        help="'zhong' fits the proportional-hazards model of Zhong et al. (2022) with the same estimator")
     return parser.parse_args()
 
 
@@ -98,10 +108,12 @@ def main() -> None:
         args.projection_patience = min(args.projection_patience, 2)
         args.projection_n_splits = 2
 
-    # keep K-restart runs apart from the single-fit results
-    model_name = MODEL_NAME
+    # keep variant runs apart from the single-fit results
+    model_name = "flexihaz_zhong_ph" if args.model_type == "zhong" else MODEL_NAME
     if args.n_restarts > 1:
-        model_name = f"{MODEL_NAME}_k{args.n_restarts}_{args.restart_selection}"
+        model_name = f"{model_name}_k{args.n_restarts}_{args.restart_selection}"
+    if args.theta_lr_mult != 1.0:
+        model_name = f"{model_name}_thetalr{args.theta_lr_mult:g}"
 
     output_dir = Path(args.output_dir)
     ensure_dir(replication_dir(output_dir, model_name))
@@ -153,6 +165,8 @@ def main() -> None:
                 three_phase_lr=True,
                 n_restarts=args.n_restarts,
                 restart_selection=args.restart_selection,
+                theta_lr_multiplier=args.theta_lr_mult,
+                model_type=args.model_type,
             )
 
             t0 = time.perf_counter()
@@ -175,6 +189,8 @@ def main() -> None:
                 "random_censoring_rate": float(train["random_censoring_rate"]),
                 "administrative_censoring_rate": float(train["administrative_censoring_rate"]),
                 "params_path": str(params_path),
+                "model_type": args.model_type,
+                "theta_lr_multiplier": float(args.theta_lr_mult),
                 **theta_summary_extra,
             }
             if model.restart_results_ is not None:

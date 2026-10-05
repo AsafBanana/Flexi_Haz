@@ -10,8 +10,8 @@ import warnings
 from .data import build_time_grid, make_expanded_data
 from .exceptions import InputValidationError, NotFittedError
 from .inference import crossfitted_score_residuals, estimate_theta_variance, theta_confidence_interval
-from .loss import negative_log_likelihood
-from .networks import FlexiHazardNet
+from .loss import cox_partial_likelihood_loss, negative_log_likelihood
+from .networks import FlexiHazardNet, ZhongPHNet
 from .preprocessing import Standardizer, validate_survival_inputs, truncate_at_tau
 from .utils import resolve_device, set_seed
 
@@ -30,6 +30,18 @@ class FlexiHazardModel:
                            the internal training subjects (requires Z).
     Per-restart diagnostics are stored in restart_results_ and the chosen index in
     selected_restart_.
+
+    theta_lr_multiplier > 1 trains the linear (theta) branch with learning rate
+    learning_rate * theta_lr_multiplier (its own Adam parameter group), in every LR
+    phase; the network keeps learning_rate.
+
+    model_type="zhong" fits the proportional-hazards model of Zhong, Mueller and Wang
+    (2022) instead: h(t | X, Z) = h0(t) exp{theta^T Z + g(X)}, g without time input,
+    trained full-batch on the Breslow partial likelihood (no interval expansion;
+    batch_size and grid_size are ignored). theta is refined by profiling the partial
+    likelihood with g fixed, and the projection networks for the covariance and the
+    efficient score are additive, g_X(X) + g_T(t), as in that paper. Cumulative hazard
+    and survival use the Breslow baseline; predict_hazard is unavailable.
     """
 
     def __init__(
@@ -66,6 +78,8 @@ class FlexiHazardModel:
         scale_time=True,
         n_restarts=1,
         restart_selection="val_loss",
+        theta_lr_multiplier=1.0,
+        model_type="flexihaz",
     ):
         self.hidden_layers = tuple(hidden_layers)
         self.activation = activation
@@ -140,6 +154,14 @@ class FlexiHazardModel:
         self.restart_results_: list[dict] | None = None
         self.selected_restart_: int | None = None
 
+        self.theta_lr_multiplier = float(theta_lr_multiplier)
+        if not np.isfinite(self.theta_lr_multiplier) or self.theta_lr_multiplier <= 0:
+            raise InputValidationError("theta_lr_multiplier must be a positive number.")
+        self.model_type = str(model_type).lower()
+        if self.model_type not in {"flexihaz", "zhong"}:
+            raise InputValidationError("model_type must be 'flexihaz' or 'zhong'.")
+        self.baseline_cumhaz_: tuple[np.ndarray, np.ndarray] | None = None
+
         self.net_: FlexiHazardNet | None = None
         self.g_network = None
         self.x_scaler_: Standardizer | None = None
@@ -211,7 +233,12 @@ class FlexiHazardModel:
             Z_scaled = self.z_scaler_.fit_transform(Z) if self.standardize else Z.copy()
 
         self.time_grid = build_time_grid(T, tau, self.grid_size, self.include_observed_times)
-        expanded = make_expanded_data(T, delta, X_scaled, Z_scaled, self.time_grid)
+        if self.model_type == "zhong":
+            # partial likelihood works on subjects: one row per subject, no interval expansion
+            expanded = self._subject_rows(T, delta, X_scaled, Z_scaled)
+        else:
+            expanded = make_expanded_data(T, delta, X_scaled, Z_scaled, self.time_grid)
+        self.baseline_cumhaz_ = None
 
         # The split does not touch the torch RNG, so doing it before building the
         # network leaves the single-restart fit identical to before.
@@ -271,6 +298,7 @@ class FlexiHazardModel:
                 n_splits=self.projection_n_splits,
                 device=self.device,
                 seed=self.seed,
+                projection_net=self._projection_net_kind(),
             )
             # Convert variance to original Z scale when standardization was used.
             if self.z_scaler_ is not None:
@@ -287,8 +315,26 @@ class FlexiHazardModel:
         self.is_fitted_ = True
         return self
 
+    def _projection_net_kind(self):
+        return "additive" if self.model_type == "zhong" else "joint"
+
+    @staticmethod
+    def _subject_rows(T, delta, X_scaled, Z_scaled):
+        """Subject-level rows in the same layout as make_expanded_data (used by model_type='zhong')."""
+        n = len(T)
+        out = {
+            "X": np.asarray(X_scaled, dtype=np.float32),
+            "t": np.asarray(T, dtype=np.float32).reshape(-1, 1),
+            "event": np.asarray(delta, dtype=np.float32).reshape(-1, 1),
+            "subject_id": np.arange(n, dtype=np.int64),
+        }
+        if Z_scaled is not None:
+            out["Z"] = np.asarray(Z_scaled, dtype=np.float32)
+        return out
+
     def _build_net(self, X_scaled, Z_scaled):
-        self.net_ = FlexiHazardNet(
+        net_cls = ZhongPHNet if self.model_type == "zhong" else FlexiHazardNet
+        self.net_ = net_cls(
             x_dim=X_scaled.shape[1],
             z_dim=None if Z_scaled is None else Z_scaled.shape[1],
             hidden_layers=self.hidden_layers,
@@ -381,18 +427,31 @@ class FlexiHazardModel:
             n_splits=self.projection_n_splits,
             device=self.device,
             seed=0 if self.seed is None else self.seed,
+            projection_net=self._projection_net_kind(),
         )
 
     def _efficient_score(self, expanded, train_idx, R_rows):
-        """sum over training rows of R_i * (length_i * exp(eta_i) - event_i) for the current net."""
+        """Efficient score for theta of the current net, using cross-fitted residuals R.
+
+        model_type="flexihaz": sum over training rows of R_i * (length_i * exp(eta_i) - event_i).
+        model_type="zhong": partial-likelihood score with Z replaced by its residual,
+        sum over training events of R_i - (risk-set weighted mean of R), weights exp(eta).
+        """
         X = expanded["X"][train_idx]
         t = expanded["t"][train_idx]
         Z = expanded["Z"][train_idx].astype(np.float64)
         event = expanded["event"][train_idx].astype(np.float64).reshape(-1, 1)
-        length = expanded["length"][train_idx].astype(np.float64).reshape(-1, 1)
         g = self._predict_g_on_pairs(X, t, batch_size=self.batch_size).reshape(-1, 1)
         theta = self.net_.theta().astype(np.float64).reshape(-1, 1)
         eta = np.clip(g + Z @ theta, -80.0, 80.0)
+        if self.model_type == "zhong":
+            order = np.argsort(-t.reshape(-1), kind="stable")
+            w = np.exp(eta.reshape(-1)[order])
+            R_s = np.asarray(R_rows, dtype=np.float64)[order]
+            cum_w = np.cumsum(w).reshape(-1, 1)
+            cum_Rw = np.cumsum(R_s * w.reshape(-1, 1), axis=0)
+            return np.sum(event[order] * (R_s - cum_Rw / np.maximum(cum_w, 1e-300)), axis=0)
+        length = expanded["length"][train_idx].astype(np.float64).reshape(-1, 1)
         return np.sum(R_rows * (length * np.exp(eta) - event), axis=0)
 
     def _train_val_indices(self, subject_id):
@@ -599,9 +658,11 @@ class FlexiHazardModel:
         if lr <= 0:
             raise InputValidationError("learning_rate must be positive.")
         
-        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=self.weight_decay)
+        opt = self._make_optimizer(lr)
         train_data = self._tensors_from_expanded(expanded, train_idx, device=torch.device("cpu"))
         val_data = self._tensors_from_expanded(expanded, val_idx)
+        # the partial likelihood needs the whole risk set, so model_type="zhong" is full-batch
+        batch_size = self.batch_size if self.model_type == "flexihaz" else len(train_idx)
 
         best_state = copy.deepcopy(net.state_dict())
         best_val = float("inf")
@@ -611,17 +672,19 @@ class FlexiHazardModel:
         for epoch in range(self.max_epochs):
             net.train()
             losses = []
-            for batch in self._iter_batches(train_data, self.batch_size, shuffle=True):
+            for batch in self._iter_batches(train_data, batch_size, shuffle=True):
                 xb = self._to_device(batch["X"])
                 tb = self._to_device(batch["t"])
                 eb = self._to_device(batch["event"])
-                lb = self._to_device(batch["length"])
                 if self.has_linear_:
                     zb = self._to_device(batch["Z"])
                     eta, _ = net(tb, xb, zb)
                 else:
                     eta, _ = net(tb, xb, None)
-                loss = negative_log_likelihood(eta, eb, lb)
+                if self.model_type == "zhong":
+                    loss = cox_partial_likelihood_loss(eta, tb, eb)
+                else:
+                    loss = negative_log_likelihood(eta, eb, self._to_device(batch["length"]))
                 opt.zero_grad(set_to_none=True)
                 loss.backward()
                 opt.step()
@@ -661,6 +724,19 @@ class FlexiHazardModel:
             "learning_rate": lr,
         }
 
+    def _make_optimizer(self, lr):
+        """Adam over the network; with theta_lr_multiplier != 1 the linear branch gets its own group."""
+        net = self.net_
+        linear = getattr(net, "linear", None)
+        if self.has_linear_ and linear is not None and self.theta_lr_multiplier != 1.0:
+            lin_ids = {id(p) for p in linear.parameters()}
+            groups = [
+                {"params": [p for p in net.parameters() if id(p) not in lin_ids]},
+                {"params": list(linear.parameters()), "lr": lr * self.theta_lr_multiplier},
+            ]
+            return torch.optim.Adam(groups, lr=lr, weight_decay=self.weight_decay)
+        return torch.optim.Adam(net.parameters(), lr=lr, weight_decay=self.weight_decay)
+
     def _tensors_from_expanded(self, expanded, idx, device=None):
         device = self.device if device is None else device
         out = {
@@ -671,8 +747,9 @@ class FlexiHazardModel:
                 device=device,
                 ),
             "event": torch.as_tensor(expanded["event"][idx], dtype=torch.float32, device=device),
-            "length": torch.as_tensor(expanded["length"][idx], dtype=torch.float32, device=device),
         }
+        if "length" in expanded:
+            out["length"] = torch.as_tensor(expanded["length"][idx], dtype=torch.float32, device=device)
         if self.has_linear_:
             out["Z"] = torch.as_tensor(expanded["Z"][idx], dtype=torch.float32, device=device)
         return out
@@ -684,6 +761,8 @@ class FlexiHazardModel:
             eta, _ = self.net_(data["t"], data["X"], data["Z"])
         else:
             eta, _ = self.net_(data["t"], data["X"], None)
+        if self.model_type == "zhong":
+            return float(cox_partial_likelihood_loss(eta, data["t"], data["event"]).detach().cpu())
         return float(negative_log_likelihood(eta, data["event"], data["length"]).detach().cpu())
 
     @torch.no_grad()
@@ -707,6 +786,9 @@ class FlexiHazardModel:
 
     def _refine_theta(self, expanded):
         if not self.has_linear_:
+            return
+        if self.model_type == "zhong":
+            self._refine_theta_partial_likelihood(expanded)
             return
         X = expanded["X"]
         Z = expanded["Z"].astype(np.float64)
@@ -732,6 +814,62 @@ class FlexiHazardModel:
             with torch.no_grad():
                 self.net_.linear.weight.copy_(torch.as_tensor(res.x.reshape(1, -1), dtype=torch.float32, device=self.device))
 
+    def _refine_theta_partial_likelihood(self, rows):
+        """model_type='zhong': set theta to the maximiser of the Breslow partial likelihood with g fixed."""
+        g = self._predict_g_on_pairs(rows["X"], rows["t"], batch_size=self.batch_size).reshape(-1)
+        order = np.argsort(-rows["t"].reshape(-1), kind="stable")
+        g_s = g[order].astype(np.float64)
+        Z_s = rows["Z"][order].astype(np.float64)
+        d_s = rows["event"].reshape(-1)[order].astype(np.float64)
+        n_events = max(float(d_s.sum()), 1.0)
+        theta0 = self.net_.theta().astype(np.float64)
+
+        def obj_grad(theta):
+            eta = np.clip(g_s + Z_s @ theta, -80.0, 80.0)
+            w = np.exp(eta)
+            cum_w = np.maximum(np.cumsum(w), 1e-300)
+            cum_Zw = np.cumsum(Z_s * w.reshape(-1, 1), axis=0)
+            ll = np.sum(d_s * (eta - np.log(cum_w)))
+            grad = np.sum(d_s.reshape(-1, 1) * (Z_s - cum_Zw / cum_w.reshape(-1, 1)), axis=0)
+            return -ll / n_events, -grad / n_events
+
+        res = minimize(obj_grad, theta0, jac=True, method="L-BFGS-B")
+        if res.success:
+            with torch.no_grad():
+                self.net_.linear.weight.copy_(torch.as_tensor(res.x.reshape(1, -1), dtype=torch.float32, device=self.device))
+
+    @torch.no_grad()
+    def _predict_eta_subjects(self, X_scaled, Z_scaled):
+        """Linear predictor eta = g(X) + theta^T Z on subject rows (model_type='zhong')."""
+        self.net_.eval()
+        X_t = torch.as_tensor(X_scaled, dtype=torch.float32)
+        Z_t = None if Z_scaled is None else torch.as_tensor(Z_scaled, dtype=torch.float32)
+        n = X_t.shape[0]
+        batch_size = max(1, self.batch_size)
+        out = []
+        for start in range(0, n, batch_size):
+            xb = self._to_device(X_t[start:start + batch_size])
+            tb = torch.zeros((xb.shape[0], 1), dtype=torch.float32, device=self.device)
+            zb = None if Z_t is None else self._to_device(Z_t[start:start + batch_size])
+            eta, _ = self.net_(tb, xb, zb)
+            out.append(eta.cpu().numpy())
+        return np.vstack(out).reshape(-1).astype(np.float64)
+
+    def _breslow_baseline(self):
+        """Breslow baseline cumulative hazard H0 at the distinct event times of the fitted data."""
+        if self.baseline_cumhaz_ is None:
+            T = self.T_train_
+            delta = self.delta_train_.astype(bool)
+            eta = self._predict_eta_subjects(self.X_train_scaled_, self.Z_train_scaled_)
+            risk = np.exp(np.clip(eta, -80.0, 80.0))
+            event_times = np.sort(np.unique(T[delta]))
+            increments = np.zeros(event_times.shape[0], dtype=np.float64)
+            for j, s in enumerate(event_times):
+                d_j = float(np.sum(delta & (T == s)))
+                increments[j] = d_j / max(float(np.sum(risk[T >= s])), 1e-300)
+            self.baseline_cumhaz_ = (event_times, np.cumsum(increments))
+        return self.baseline_cumhaz_
+
     def _check_fitted(self):
         if not self.is_fitted_ or self.net_ is None:
             raise NotFittedError("Call fit() before prediction.")
@@ -754,6 +892,11 @@ class FlexiHazardModel:
 
     def predict_hazard(self, X_new, times, Z_new=None):
         self._check_fitted()
+        if self.model_type == "zhong":
+            raise InputValidationError(
+                "predict_hazard is not available for model_type='zhong' (the Breslow baseline hazard is a step "
+                "function); use predict_cumulative_hazard or predict_survival."
+            )
         X_scaled, times, X_pairs, t_pairs, n, m = self._make_prediction_pairs(X_new, times)
         Z_scaled = self._prepare_Z(Z_new)
         if self.has_linear_:
@@ -785,6 +928,18 @@ class FlexiHazardModel:
     def predict_cumulative_hazard(self, X_new, times, Z_new=None):
         self._check_fitted()
         times = np.asarray(times, dtype=np.float64).reshape(-1)
+        if self.model_type == "zhong":
+            if np.any(times < 0) or np.any(times > self.tau + 1e-12):
+                raise InputValidationError("times must lie within [0, tau].")
+            X_scaled = self._prepare_X(X_new)
+            Z_scaled = self._prepare_Z(Z_new)
+            if self.has_linear_ and Z_scaled.shape[0] != X_scaled.shape[0]:
+                raise InputValidationError("X_new and Z_new must have the same number of rows.")
+            event_times, H0 = self._breslow_baseline()
+            idx = np.searchsorted(event_times, times, side="right") - 1
+            H0_at = np.where(idx >= 0, H0[np.maximum(idx, 0)], 0.0) if event_times.size else np.zeros(times.size)
+            eta = self._predict_eta_subjects(X_scaled, Z_scaled)
+            return np.outer(np.exp(np.clip(eta, -80.0, 80.0)), H0_at)
         if np.any(np.diff(times) < 0):
             order = np.argsort(times)
             inv = np.argsort(order)

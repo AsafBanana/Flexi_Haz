@@ -275,6 +275,13 @@ These runs are written to a separate model folder
 (`flexihaz_partial_linear_k5_efficient_score`), and each replication summary
 records every restart's validation loss, coefficients and score.
 
+Two further options of the same runner: `--theta-lr-mult 20` trains the
+linear coefficients with 20 times the network learning rate (folder suffix
+`_thetalr20`), and `--model-type zhong` fits the Zhong et al. (2022)
+proportional-hazards model through the FLEXI-Haz estimator (`model_type="zhong"`:
+no time input to the network, Breslow partial likelihood, additive projection
+networks; folder `flexihaz_zhong_ph`). Both can be combined with `--n-restarts`.
+
 Fully nonparametric FLEXI-Haz:
 
 ``` bash
