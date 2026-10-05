@@ -975,6 +975,15 @@ def test_zhong_refine_theta_maximises_profile_partial_likelihood():
             assert loss_at(other) >= at_hat - 1e-6
 
 
+def test_epoch_defaults_depend_on_model_type():
+    base = FlexiHazardModel(device="cpu")
+    assert (base.max_epochs, base.patience) == (500, 30)
+    zh = FlexiHazardModel(device="cpu", model_type="zhong")
+    assert (zh.max_epochs, zh.patience) == (5000, 35)
+    explicit = FlexiHazardModel(device="cpu", model_type="zhong", max_epochs=7, patience=2)
+    assert (explicit.max_epochs, explicit.patience) == (7, 2)
+
+
 def test_invalid_model_type_raises():
     with pytest.raises(InputValidationError):
         FlexiHazardModel(**tiny_model_kwargs(model_type="cox"))

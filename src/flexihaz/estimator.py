@@ -41,7 +41,8 @@ class FlexiHazardModel:
     batch_size and grid_size are ignored). theta is refined by profiling the partial
     likelihood with g fixed, and the projection networks for the covariance and the
     efficient score are additive, g_X(X) + g_T(t), as in that paper. Cumulative hazard
-    and survival use the Breslow baseline; predict_hazard is unavailable.
+    and survival use the Breslow baseline; predict_hazard is unavailable. Unless given,
+    max_epochs / patience default to 5000 / 35 for this model (500 / 30 otherwise).
     """
 
     def __init__(
@@ -52,8 +53,8 @@ class FlexiHazardModel:
         learning_rate=1e-3,
         three_phase_lr=True,
         batch_size=16 ** 4,
-        max_epochs=500,
-        patience=30,
+        max_epochs=None,
+        patience=None,
         weight_decay=0.0,
         tau=None,
         grid_size=None,
@@ -87,8 +88,14 @@ class FlexiHazardModel:
         self.learning_rate = float(learning_rate)
         self.three_phase_lr = bool(three_phase_lr)
         self.batch_size = int(batch_size)
-        self.max_epochs = int(max_epochs)
-        self.patience = int(patience)
+        # defaults depend on model_type (resolved below): 500 / 30 for "flexihaz",
+        # 5000 / 35 for "zhong" (one full-batch step per epoch, as in Zhong et al. 2022)
+        self.model_type = str(model_type).lower()
+        if self.model_type not in {"flexihaz", "zhong"}:
+            raise InputValidationError("model_type must be 'flexihaz' or 'zhong'.")
+        default_max_epochs, default_patience = (5000, 35) if self.model_type == "zhong" else (500, 30)
+        self.max_epochs = default_max_epochs if max_epochs is None else int(max_epochs)
+        self.patience = default_patience if patience is None else int(patience)
         self.weight_decay = 0.0 # If you want to enable weight decay in future, define as float(weight_decay)
         self.tau = tau
         self.grid_size = grid_size
@@ -157,9 +164,6 @@ class FlexiHazardModel:
         self.theta_lr_multiplier = float(theta_lr_multiplier)
         if not np.isfinite(self.theta_lr_multiplier) or self.theta_lr_multiplier <= 0:
             raise InputValidationError("theta_lr_multiplier must be a positive number.")
-        self.model_type = str(model_type).lower()
-        if self.model_type not in {"flexihaz", "zhong"}:
-            raise InputValidationError("model_type must be 'flexihaz' or 'zhong'.")
         self.baseline_cumhaz_: tuple[np.ndarray, np.ndarray] | None = None
 
         self.net_: FlexiHazardNet | None = None

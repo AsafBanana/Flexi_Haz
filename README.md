@@ -125,8 +125,8 @@ model = FlexiHazardModel(
     learning_rate=1e-3,
     three_phase_lr=True,
     batch_size=16**4,
-    max_epochs=500,
-    patience=30,
+    max_epochs=None,   # 500 for the default model, 5000 for model_type="zhong"
+    patience=None,     # 30 for the default model, 35 for model_type="zhong"
     standardize=True,
     refine_theta=True,
     compute_theta_variance=True,
@@ -165,8 +165,8 @@ model_np = FlexiHazardModel(
     tau=tau,
     hidden_layers=(64, 64),
     learning_rate=1e-3,
-    max_epochs=500,
-    patience=30,
+    max_epochs=None,   # 500 for the default model, 5000 for model_type="zhong"
+    patience=None,     # 30 for the default model, 35 for model_type="zhong"
     standardize=True,
     scale_time=True,
     seed=1,

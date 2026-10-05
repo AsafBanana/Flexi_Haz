@@ -50,8 +50,8 @@ FlexiHazardModel(
     learning_rate=1e-3,
     three_phase_lr=True,
     batch_size=16**4,
-    max_epochs=500,
-    patience=30,
+    max_epochs=None,
+    patience=None,
     tau=None,
     grid_size=None,
     include_observed_times=True,
@@ -79,6 +79,8 @@ FlexiHazardModel(
     model_type="flexihaz",
 )
 ```
+
+`max_epochs=None` and `patience=None` resolve to `500` and `30` for `model_type="flexihaz"` and to `5000` and `35` for `model_type="zhong"`; pass explicit values to override either.
 
 ## Fitting
 
@@ -130,7 +132,7 @@ Differences from the default `model_type="flexihaz"`:
 - the projection networks used for `var_theta_hat` and for `restart_selection="efficient_score"` are additive, `g_X(X) + g_T(t)`, with no `X`–`t` interaction, as in that paper; the efficient score is the partial-likelihood score with `Z` replaced by its cross-fitted residual;
 - `predict_cumulative_hazard` and `predict_survival` use the Breslow baseline cumulative hazard of the fitted data, `predict_g` returns `g(X)` repeated over `times`, and `predict_hazard` raises an input-validation error (the baseline hazard is a step function).
 
-Early stopping, the learning-rate phases, Cox initialization, `n_restarts`, `theta_lr_multiplier` and the covariance estimator work as for the default model. Zhong et al. train with `max_epochs=5000`, `patience=35` and one full-batch step per epoch, so consider raising `max_epochs` for this model.
+Early stopping, the learning-rate phases, Cox initialization, `n_restarts`, `theta_lr_multiplier` and the covariance estimator work as for the default model. Because each epoch is one full-batch step, `max_epochs` and `patience` default to `5000` and `35` for this model (the values used by Zhong et al.) when not given explicitly.
 
 When `theta_init="cox"`, the estimator attempts Cox initialization through `lifelines`. If that import or fit fails, the current implementation warns and falls back to zero initialization.
 
