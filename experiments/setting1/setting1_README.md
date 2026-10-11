@@ -33,12 +33,22 @@ Outputs go to `outputs/` (git-ignored).
 lambda(t | X, Z) = 0.05 exp{ t exp(gamma a(X)) + b(X) + theta_0 Z }
 ```
 
-with `a(X)`, `b(X)` pure interaction terms of the centred covariates (`--k 3`),
-scaled so the log-hazard variance splits PH / non-PH / linear as 70/0/30 when
-`gamma = 0` and 35/35/30 when `gamma = 0.5`. `gamma = 0` is proportional hazards;
-`gamma = 0.5` makes the X effect time-varying. Censoring: `C = c U`, with `c`
-calibrated by Monte Carlo per setting to 30% censoring (computed by the tuners
-and stored in their JSON output, reused by the replication runners).
+with, writing `X~_j = X_j - 1/2`,
+
+``` text
+a(X) = 6   c_a (X~1^2 X~2 - X~2^2 X~3 + X~3^2 X~4 - X~4^2 X~5)
+b(X) = 5.5 c_b (X~1^2 X~3 + X~2^2 X~4 + X~3^2 X~5 + X~1^2 X~5)
+```
+
+`c_b = 1.542799` for `gamma = 0` (`c_a` immaterial) and `(c_a, c_b) = (1.574509,
+1.090924)` for `gamma = 0.5`, so the log-hazard variance splits PH / non-PH /
+linear as 70/0/30 and 35/35/30. These constants are built into
+`dgm_additional.py` (`--k 3`, the default). `gamma = 0` is proportional hazards;
+`gamma = 0.5` makes the X effect time-varying. Censoring `C ~ Uniform(0, c)`,
+independent of (X, Z), with `c` calibrated by Monte Carlo separately for each
+`(gamma, rho)` to 30% censoring; the tuner computes it, stores it in its JSON,
+and the replication runners reuse it (so every replication of a setting shares
+one `c`).
 Replication `r` uses seed `221100 + r`; the tuning dataset uses seed 500000.
 
 ## Models and training
@@ -56,14 +66,17 @@ warm start of `theta`, validation fraction 0.33 by subject.
   linear branch is not frozen by the small network rate on the smaller sample;
 - after each phase `theta` is re-solved exactly (L-BFGS on the training rows with
   `g` fixed, `common.refine_theta`);
-- minibatch of 100,000 expanded rows at `n = 8000`; at `n = 4000`
-  ceil(#expanded training rows / 213) (`--main-batches-per-epoch 213`), which
-  keeps the same number of optimizer steps per epoch;
+- main-net minibatch ceil(#expanded training rows / 213)
+  (`--main-batches-per-epoch 213`, about 100,000 rows at `n = 8000`), so the
+  number of optimizer steps per epoch does not change with n; projection-net
+  minibatch ceil(#inner-training event subjects / 8) (`--proj-batches-per-epoch 8`);
 - 5 random restarts (seeds 910000-910004); the restart whose **efficient score**
   (orthogonalised score built from cross-fitted residuals `Z - E[Z | X, t]`) is
   closest to zero is reported;
-- SE from the same cross-fitted residuals: `Var(theta) = (R'R)^-1` over event rows,
-  5 subject folds, projection nets Adam 1e-3, at most 300 epochs, patience 30.
+- SE from the same cross-fitted residuals: with `R_i = Delta_i (Z_i - m(T_i, X_i))`
+  over the training subjects, `I = (1/n_tr) sum R_i^2` and `Var(theta) = 1 / (n_tr I)`;
+  5 subject folds, projection nets Adam 1e-3, inner 80/20 split of the event
+  subjects for early stopping, at most 300 epochs, patience 30.
 
 **Zhong et al. (2022)** (`run_zhong_reps.py`): `h(t | X, Z) = h_0(t) exp{theta Z + g(X)}`,
 Breslow partial likelihood, full batch, at most 5000 epochs, patience 35,
@@ -80,8 +93,8 @@ standardized inputs, Cox (X+Z) warm start.
 
 ## Tuning
 
-One tuning dataset of size 8000 per setting (seed 500000), 67/33 subject split
-for early stopping.
+One independent tuning dataset per setting and sample size (seed 500000, size
+`--n`), 67/33 subject split for early stopping.
 
 - FLEXI-Haz main net: depth `{2,3,4,5,6}` x width `{25,50,100,150,200,300,500}`
   (35 architectures) with the 3-phase schedule, learning rate not searched,
@@ -97,8 +110,9 @@ for early stopping.
   in the paper.
 
 The tuners write their selections (and the calibrated censoring constant) to
-`outputs/tuning_flexihaz_<tag>.json` / `outputs/tuning_zhong_<tag>.json`, which
-the replication runners take through `--config`.
+`outputs/tuning_flexihaz_<tag>.json` / `outputs/tuning_zhong_<tag>.json`
+(`<tag> = gamma<g>_rho<r>_cens30_k3_n<n>`), which the replication runners take
+through `--config`.
 
 ## Running
 
@@ -109,24 +123,28 @@ per setting, `gamma in {0.0, 0.5} x rho in {0.0, 0.5, 0.75}` (shown for
 `--n-reps`.
 
 ``` bash
-# tuning (one tuning dataset of 8000 per setting)
-python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 --prefer-fewer-layers
-python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000
+# tuning, per setting and sample size (k = 3 and 30% censoring are the defaults)
+python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 8000 --prefer-fewer-layers
+python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 4000 --prefer-fewer-layers
+python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --n 8000
+python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --n 4000
 
 # n = 8000: FLEXI-Haz with three lr phases (1e-3, 1e-4, 1e-5), theta at the network rate
-python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
-    --n-reps 200 --n-init 5 --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
+python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --n 8000 --n-reps 200 --n-init 5 \
+    --main-batches-per-epoch 213 --proj-batches-per-epoch 8 \
+    --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
 
-# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20 (same tuning file)
-python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
-    --n-reps 200 --n-init 5 --theta-lr-mult 20 --lr-phases 1e-3,1e-4,1e-5,1e-6 \
-    --main-batches-per-epoch 213 --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
+# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20
+python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --n 4000 --n-reps 200 --n-init 5 \
+    --theta-lr-mult 20 --lr-phases 1e-3,1e-4,1e-5,1e-6 \
+    --main-batches-per-epoch 213 --proj-batches-per-epoch 8 \
+    --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n4000.json
 
 # Zhong, both sample sizes (same recipe)
-python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
-    --n-reps 200 --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
-python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
-    --n-reps 200 --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
+python run_zhong_reps.py --gamma 0.5 --rho 0.5 --n 8000 --n-reps 200 \
+    --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
+python run_zhong_reps.py --gamma 0.5 --rho 0.5 --n 4000 --n-reps 200 \
+    --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n4000.json
 
 python aggregate_setting1.py          # -> outputs/setting1_summary.csv (one row per model, setting and n)
 ```

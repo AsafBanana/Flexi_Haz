@@ -230,20 +230,43 @@ def calibrate_censoring_c(
     return float(c_star)
 
 
+# Setting-1 scale constants of the paper (Supplementary A.1.1): a(X) = 6 c_a (...), b(X) = 5.5 c_b (...),
+# calibrated so the log-hazard variance splits PH / non-PH / linear as 70/0/30 (gamma = 0) and
+# 35/35/30 (gamma = 0.5).  c_a is immaterial when gamma = 0.  Applied for k = 3 unless the
+# scales are given explicitly.
+PAPER_SCALES = {0.0: dict(nonph_scale=1.0, ph_scale=1.542799),
+                0.5: dict(nonph_scale=1.574509, ph_scale=1.090924)}
+
+
+def paper_scales(gamma: float, k: int) -> dict:
+    """(nonph_scale = c_a, ph_scale = c_b) used in the paper for this gamma; 1.0 / 1.0 otherwise."""
+    if k == 3 and float(gamma) in PAPER_SCALES:
+        return dict(PAPER_SCALES[float(gamma)])
+    return dict(nonph_scale=1.0, ph_scale=1.0)
+
+
 @dataclass(frozen=True)
 class DGMConfig:
     gamma: float
     rho: float
     censoring_rate: float
     n: int = 8000
-    k: int = 0  # 0 = original additive DeepEH-type setting, 1 = with interactions (I1/I2),
+    k: int = 3  # 3 = the paper's setting 1 (pure interactions, paper constants c_a, c_b); legacy variants:
+                # 0 = original additive DeepEH-type setting, 1 = with interactions (I1/I2),
                 # 2 = "extreme" (squared base terms -> cubed, interactions Xi*Xj -> Xi^2*Xj),
                 # 3 = "pure interaction" (a/b are ONLY Xi^2*Xj terms, no base polynomial,
                 #     scaled so Var(a)~=Var(b)~=Var(theta0*Z) -- PH/non-PH/linear all matter)
     nonlinear_scale: float = 1.0  # multiplies a(X)/b(X); >1 raises Var(nonlinear part)
                                    # relative to Var(theta0*Z), which is fixed at theta0^2
-    ph_scale: float = 1.0    # multiplies ONLY b(X) (the PH part); 0.0 removes it entirely
-    nonph_scale: float = 1.0  # multiplies ONLY a(X) (the non-PH part)
+    ph_scale: float | None = None    # c_b: multiplies ONLY b(X) (the PH part); None -> paper constant
+    nonph_scale: float | None = None  # c_a: multiplies ONLY a(X) (the non-PH part); None -> paper constant
+
+    def __post_init__(self):
+        defaults = paper_scales(self.gamma, self.k)
+        if self.ph_scale is None:
+            object.__setattr__(self, "ph_scale", float(defaults["ph_scale"]))
+        if self.nonph_scale is None:
+            object.__setattr__(self, "nonph_scale", float(defaults["nonph_scale"]))
 
 
 def simulate_dataset(cfg: DGMConfig, seed: int, calibrated_c: float | None = None) -> dict:

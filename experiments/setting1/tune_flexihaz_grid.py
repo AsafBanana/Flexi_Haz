@@ -35,7 +35,7 @@ from flexihaz.inference import _fit_projection_net, _predict_projection  # noqa:
 from flexihaz.preprocessing import Standardizer, validate_survival_inputs, truncate_at_tau  # noqa: E402
 from flexihaz.utils import set_seed  # noqa: E402
 
-from dgm_additional import DGMConfig, calibrate_censoring_c, simulate_dataset  # noqa: E402
+from dgm_additional import DGMConfig, calibrate_censoring_c, paper_scales, simulate_dataset  # noqa: E402
 
 TUNING_SEED = 500_000
 BATCH_SIZE = 100_000
@@ -136,9 +136,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamma", type=float, required=True)
     ap.add_argument("--rho", type=float, required=True)
-    ap.add_argument("--censoring-rate", type=float, required=True)
+    ap.add_argument("--censoring-rate", type=float, default=0.3)
     ap.add_argument("--n", type=int, default=8000)
-    ap.add_argument("--k", type=int, default=0, choices=[0, 1, 2, 3],
+    ap.add_argument("--k", type=int, default=3, choices=[0, 1, 2, 3],
                      help="0 = original additive setting, 1 = with interactions (I1/I2), "
                           "2 = extreme (squared terms -> cubed, interactions Xi*Xj -> Xi^2*Xj), "
                           "3 = pure interaction (a/b are ONLY Xi^2*Xj, no base terms, "
@@ -146,8 +146,8 @@ def main():
     ap.add_argument("--nonlinear-scale", type=float, default=1.0,
                      help="multiplies a(X)/b(X); >1 raises Var(nonlinear part) relative to "
                           "Var(theta0*Z), which is fixed at theta0^2 regardless of rho/k")
-    ap.add_argument("--ph-scale", type=float, default=1.0, help="multiplies ONLY b(X) (PH part); 0.0 removes it")
-    ap.add_argument("--nonph-scale", type=float, default=1.0, help="multiplies ONLY a(X) (non-PH part)")
+    ap.add_argument("--ph-scale", type=float, default=None, help="c_b, multiplies ONLY b(X) (PH part); default: the paper constant for gamma")
+    ap.add_argument("--nonph-scale", type=float, default=None, help="c_a, multiplies ONLY a(X) (non-PH part); default: the paper constant for gamma")
     ap.add_argument("--seed", type=int, default=TUNING_SEED,
                      help="overrides TUNING_SEED -- controls the tuning dataset draw, net init, "
                           "and train/val split all at once (all runs so far used the default)")
@@ -177,7 +177,7 @@ def main():
     tag += f"_n{cfg.n}"
     if cfg.nonlinear_scale != 1.0:
         tag += f"_scale{cfg.nonlinear_scale:g}"
-    if cfg.ph_scale != 1.0 or cfg.nonph_scale != 1.0:
+    if dict(ph_scale=cfg.ph_scale, nonph_scale=cfg.nonph_scale) != paper_scales(cfg.gamma, cfg.k):
         tag += f"_ph{cfg.ph_scale:g}_nonph{cfg.nonph_scale:g}"
     if TUNING_SEED != 500_000:
         tag += f"_seed{TUNING_SEED}"

@@ -33,7 +33,7 @@ from flexihaz.networks import FlexiHazardNet  # noqa: E402
 from flexihaz.preprocessing import Standardizer, validate_survival_inputs, truncate_at_tau  # noqa: E402
 from flexihaz.utils import set_seed  # noqa: E402
 
-from dgm_additional import DGMConfig, calibrate_censoring_c, simulate_dataset  # noqa: E402
+from dgm_additional import DGMConfig, calibrate_censoring_c, paper_scales, simulate_dataset  # noqa: E402
 from common import refine_theta, LR_PHASES, BASE_SEED, PROJECTION_LR  # noqa: E402
 import crossfit_residuals as _cfr  # noqa: E402
 from crossfit_residuals import compute_crossfitted_residuals, residuals_on_heldout_rows  # noqa: E402
@@ -300,16 +300,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamma", type=float, required=True)
     ap.add_argument("--rho", type=float, required=True)
-    ap.add_argument("--censoring-rate", type=float, required=True)
+    ap.add_argument("--censoring-rate", type=float, default=0.3)
     ap.add_argument("--n", type=int, default=8000)
-    ap.add_argument("--k", type=int, default=0, choices=[0, 1, 2, 3],
+    ap.add_argument("--k", type=int, default=3, choices=[0, 1, 2, 3],
                      help="0 = original additive setting, 1 = with interactions (I1/I2), "
                           "2 = extreme (squared terms -> cubed, interactions Xi*Xj -> Xi^2*Xj), "
                           "3 = pure interaction (a/b are ONLY Xi^2*Xj, no base terms, "
                           "scaled so PH/non-PH/linear all have comparable variance)")
     ap.add_argument("--nonlinear-scale", type=float, default=1.0)
-    ap.add_argument("--ph-scale", type=float, default=1.0, help="multiplies ONLY b(X) (PH part); 0.0 removes it")
-    ap.add_argument("--nonph-scale", type=float, default=1.0, help="multiplies ONLY a(X) (non-PH part)")
+    ap.add_argument("--ph-scale", type=float, default=None, help="c_b, multiplies ONLY b(X) (PH part); default: the paper constant for gamma")
+    ap.add_argument("--nonph-scale", type=float, default=None, help="c_a, multiplies ONLY a(X) (non-PH part); default: the paper constant for gamma")
     ap.add_argument("--n-reps", type=int, default=200)
     ap.add_argument("--rep-start", type=int, default=0,
                      help="first rep_id to run (for splitting one setting's reps across multiple machines "
@@ -348,7 +348,7 @@ def main():
     tag += f"_n{cfg.n}"
     if cfg.nonlinear_scale != 1.0:
         tag += f"_scale{cfg.nonlinear_scale:g}"
-    if cfg.ph_scale != 1.0 or cfg.nonph_scale != 1.0:
+    if dict(ph_scale=cfg.ph_scale, nonph_scale=cfg.nonph_scale) != paper_scales(cfg.gamma, cfg.k):
         tag += f"_ph{cfg.ph_scale:g}_nonph{cfg.nonph_scale:g}"
     if args.n_init != 3:
         tag += f"_ninit{args.n_init}"
