@@ -63,8 +63,9 @@ and its covariance are reported on the original scale.
 
 Both use ReLU networks, no dropout, no weight decay, early stopping on
 an internal 67%/33% subject split, a Cox (X+Z) warm start of `theta`,
-and `K` random restarts (default 5) of which the one with the lowest
-validation loss is kept.
+and `K` random restarts (default 5). FLEXI-Haz keeps the restart whose
+efficient (orthogonalised) score has the smallest norm; Zhong keeps the
+one with the smallest validation partial likelihood.
 
 Two training options matter for the comparison:
 
@@ -102,7 +103,8 @@ Two training options matter for the comparison:
    trained once and scored by its validation loss on the internal 67/33
    split; the smallest loss wins. `--learning-rates` overrides the grid.
 3. **Final fit.** The selected architecture is refitted with `K`
-   restarts; the lowest-validation-loss restart is kept.
+   restarts; FLEXI-Haz keeps the smallest-efficient-score restart, Zhong the
+   lowest-validation-loss one.
 4. **Inference.** `theta`, its standard error, 90% and 95% normal
    confidence intervals and hazard ratios per fold; across folds the
    mean estimate, the standard deviation of the fold estimates, the mean

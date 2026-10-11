@@ -19,8 +19,8 @@ flexihaz.FlexiHazardModel:
   the fold's training rows with the estimator's own 67%/33% subject split for early
   stopping and scored by its validation loss; the argmin is selected;
 * the selected architecture is refitted with --n-restarts (default 5) random
-  restarts, keeping the restart with the lowest validation loss (or the smallest
-  efficient score with --restart-selection efficient_score); theta, its SE (residual
+  restarts; FLEXI-Haz keeps the restart with the smallest efficient-score norm, Zhong
+  the one with the smallest validation partial likelihood (--restart-selection); theta, its SE (residual
   projection nets: joint (t,X) net for FLEXI-Haz, additive g_X(X)+g_T(t) net for
   Zhong), 90% and 95% CIs are recorded per fold;
 * across folds: mean estimate, SD of the fold estimates, mean SE, mean CI bounds.
@@ -89,7 +89,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--patience", type=int, default=30)
     p.add_argument("--tuning-max-epochs", type=int, default=None, help="None -> same as --max-epochs")
     p.add_argument("--n-restarts", type=int, default=5)
-    p.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default="val_loss")
+    p.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default=None,
+                   help="how the kept restart is chosen; default efficient_score for flexihaz (smallest efficient-score norm), "
+                        "val_loss for zhong (smallest validation partial likelihood)")
     p.add_argument("--theta-lr-mult", type=float, default=1.0, help="learning-rate multiplier for the theta branch")
     p.add_argument("--zhong-plain", action="store_true",
                    help="single constant-lr phase and no profile-likelihood refinement of theta (Zhong's own recipe)")
@@ -170,6 +172,8 @@ def best_val_loss(model) -> float:
 
 def main() -> None:
     args = parse_args()
+    if args.restart_selection is None:
+        args.restart_selection = "efficient_score" if args.model_type == "flexihaz" else "val_loss"
     layers = [int(v) for v in args.layers.split(",") if v.strip()]
     widths = [int(v) for v in args.widths.split(",") if v.strip()]
     lrs = ([float(v) for v in args.learning_rates.split(",") if v.strip()] if args.learning_rates
