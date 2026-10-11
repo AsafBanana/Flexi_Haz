@@ -80,8 +80,8 @@ FLEXI-Haz/
 ├── examples/
 ├── experiments/
 │   ├── README.md
-│   ├── simulation/
-│   └── rotterdam/
+│   ├── simulation/   (simulation_README.md)
+│   └── rotterdam/    (rotterdam_README.md)
 ├── tests/
 ├── docs/
 │   └── FLEXI_Haz_Report.pdf
@@ -259,7 +259,7 @@ linear coefficients. Its empirical 95% confidence-interval coverage was
 **0.945** for both coefficients.
 
 See
-[`experiments/simulation/README.md`](experiments/simulation/README.md)
+[`experiments/simulation/simulation_README.md`](experiments/simulation/simulation_README.md)
 for the complete reproduction workflow.
 
 ### Rotterdam breast-cancer study
@@ -273,7 +273,7 @@ Predictive evaluation is based on five shared outer folds for the neural
 models and Random Survival Forest. The experiment also compares
 ER-specific treatment-effect estimates and confidence intervals.
 
-See [`experiments/rotterdam/README.md`](experiments/rotterdam/README.md)
+See [`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md)
 for details.
 
 ## Tests
