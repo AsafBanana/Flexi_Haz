@@ -65,8 +65,8 @@ dropout 0.
   observed event and censoring times; time rescaled by 10. Covariate scaling
   and the Cox (X+Z) warm start of `theta` are computed from all subjects
   supplied to the fit. At each phase boundary `theta` is re-solved exactly with
-  L-BFGS-B, the network held fixed, on the training rows. 5 restarts, the one
-  with the lowest validation loss kept. Covariance from the internal training
+  L-BFGS-B, the network held fixed, on the training rows. One initialization
+  per replication (`--n-restarts` for more). Covariance from the internal training
   subjects (`n_tr = 5360` at n = 8000): per coordinate of Z a projection net
   with the main net's hidden widths regresses `Z_j` on `(T/10, X)` among
   events, 5 folds, Adam `1e-3`, batch 128, max 2000 epochs, patience 30, each
@@ -98,7 +98,7 @@ python tune_grid_cv.py --output-dir outputs --combine
 python tune_zhong_optuna.py --output-dir outputs
 
 # 3. replications (split with --start-rep / --end-rep)
-python run_replications.py --output-dir outputs --model-type flexihaz --n-restarts 5
+python run_replications.py --output-dir outputs --model-type flexihaz
 python run_replications.py --output-dir outputs --model-type zhong --zhong-plain
 
 # 4. tables
