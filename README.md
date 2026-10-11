@@ -98,10 +98,10 @@ For a regular local installation:
 pip install .
 ```
 
-The core package uses Python scientific-computing and machine-learning
-libraries including NumPy, SciPy, scikit-learn, PyTorch, and Optuna.
-Some experiment baselines require additional packages such as
-`lifelines`, `scikit-survival`, and TensorFlow.
+The core package uses NumPy, SciPy, scikit-learn, PyTorch, pandas,
+`lifelines` (Cox warm start of `theta`) and Optuna. The experiments
+additionally need `scikit-survival` for the prediction metrics of setting 2
+(`pip install -r requirements-experiments.txt`).
 
 ## Quick start
 
@@ -177,6 +177,22 @@ survival_np = model_np.predict_survival(
 )
 ```
 
+### Zhong et al. (2022) comparator
+
+The partially linear Cox model of Zhong, Mueller and Wang (2022),
+$h(t \mid X,Z)=h_0(t)\exp\{\theta^\top Z+g(X)\}$, is fitted with the same
+estimator: pass `model_type="zhong"`. Training is full-batch on the Breslow
+partial likelihood, the projection networks for the standard errors are
+additive in `X` and `t`, and `theta` can be refined by profiling the partial
+likelihood with `g` fixed.
+
+```python
+model_z = FlexiHazardModel(model_type="zhong", hidden_layers=(64, 64), learning_rate=1e-3,
+                           three_phase_lr=False, refine_theta=False, seed=1)
+model_z.fit(T, delta, X, Z=Z)
+print(model_z.theta_summary(alpha=0.05))
+```
+
 ### Hyperparameter tuning
 
 ```python
@@ -218,48 +234,33 @@ The package is internally divided into focused modules:
 | Module | Purpose |
 | --- | --- |
 | `estimator.py` | Main estimator, fitting procedure, prediction, and linear-coefficient procedures |
-| `networks.py` | Neural networks for the flexible hazard component and inference projections |
+| `networks.py` | Networks for the hazard component (FLEXI-Haz and Zhong) and the residual projections (joint and additive) |
 | `data.py` | Time-grid and expanded interval-level dataset construction |
 | `preprocessing.py` | Input validation, administrative truncation, and standardization |
-| `loss.py` | Discretized negative full log-likelihood |
-| `inference.py` | Variance estimation and confidence intervals for the linear coefficient |
+| `loss.py` | Discretized negative full log-likelihood; Breslow negative partial log-likelihood |
+| `inference.py` | Cross-fitted residual projections: covariance of `theta`, efficient score, confidence intervals |
 | `tuning.py` | Optuna-based hyperparameter tuning |
 | `utils.py` | Device and reproducibility utilities |
 | `exceptions.py` | Package-specific exceptions |
 
 ## Experiments
 
-The repository contains three reproducible evaluations under `experiments/`,
-all comparing partially linear FLEXI-Haz with the proportional-hazards DNN of
-Zhong et al. (2022) for treatment-effect estimation. See
+Three reproducible evaluations under `experiments/`, all comparing partially
+linear FLEXI-Haz with the proportional-hazards DNN of Zhong et al. (2022) for
+treatment-effect estimation. See
 [`experiments/experiments_README.md`](experiments/experiments_README.md).
 
-### Setting 1: six-setting simulation
-
-Six data-generating settings (proportional or time-varying covariate effect,
-three levels of Z-X correlation), 30% censoring, 200 replications at
-`n = 8000` and `n = 4000`, scalar `theta_0 = log 1.5`. FLEXI-Haz uses
-warm-started learning-rate phases (with a x20 learning rate for `theta` at
-n = 4000), exact refinement of `theta` after each phase, five restarts
-selected by the efficient score, and cross-fitted residual standard errors. See
-[`experiments/setting1/setting1_README.md`](experiments/setting1/setting1_README.md).
-
-### Setting 2: two-coefficient simulation
-
-A nonlinear, non-proportional-hazards mechanism with `theta_0 = (1, -1)`,
-`n = 8000`, 200 replications. Both models are fitted with `FlexiHazardModel`
-(`model_type="flexihaz"` / `"zhong"`) after a grid search on an independent
-tuning dataset with five common folds. See
-[`experiments/setting2/setting2_README.md`](experiments/setting2/setting2_README.md).
-
-### Rotterdam breast-cancer study
-
-Hormonal-therapy and chemotherapy effects on the Rotterdam data (2,982
-patients), overall and split by estrogen-receptor status at ER = 61, with five
-shared outer folds, a per-fold exhaustive architecture grid at a fixed learning
-rate, five random restarts, and residual-projection standard errors.
-FLEXI-Haz uses `theta_lr_multiplier=20` for its linear branch. See
-[`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md).
+- **Setting 1**: six data-generating settings (proportional or time-varying
+  covariate effect x three levels of Z-X correlation), 30% censoring, 200
+  replications at `n = 8000` and `n = 4000`, scalar `theta_0 = log 1.5`.
+  [`experiments/setting1/setting1_README.md`](experiments/setting1/setting1_README.md)
+- **Setting 2**: a nonlinear, non-proportional-hazards mechanism with
+  `theta_0 = (1, -1)`, `n = 8000`, 200 replications.
+  [`experiments/setting2/setting2_README.md`](experiments/setting2/setting2_README.md)
+- **Rotterdam breast-cancer study**: hormonal-therapy and chemotherapy
+  effects on the Rotterdam data (2,982 patients), overall and split by
+  estrogen-receptor status.
+  [`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md)
 
 ## Tests
 
@@ -277,12 +278,11 @@ schedule, inference, tuning, device handling, and reproducibility.
 
 ## Reproducibility
 
-The experiment directories contain the scripts used for data generation,
-tuning, model fitting, evaluation, and aggregation. Final human-readable
-tuning outputs and aggregated experimental results are retained in the
-repository. Large synthetic datasets, temporary logs, serialized Optuna
-studies, and other regenerable artifacts do not need to be version
-controlled.
+Each experiment folder contains the scripts for data generation, tuning,
+model fitting and aggregation, and its README lists the exact commands and
+seeds behind the reported tables. Generated datasets, tuning files and
+results are written to git-ignored `outputs/` (or `results/`) folders and are
+regenerated by those commands; nothing generated is committed.
 
 ## References
 
@@ -291,9 +291,6 @@ controlled.
     inference*. arXiv:2512.10570.
 -   Cox, D. R. (1972). Regression models and life-tables. *Journal of
     the Royal Statistical Society: Series B*, 34(2), 187-220.
--   Ishwaran, H., Kogalur, U. B., Blackstone, E. H., and Lauer, M. S.
-    (2008). Random survival forests. *The Annals of Applied Statistics*,
-    2(3), 841-860.
 -   Zhong, Q., Mueller, J., and Wang, J.-L. (2022). Deep learning for
     the partially linear Cox model. *The Annals of Statistics*, 50(3),
     1348-1375.
