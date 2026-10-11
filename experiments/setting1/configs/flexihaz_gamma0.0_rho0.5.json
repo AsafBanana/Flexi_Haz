@@ -1,0 +1,19 @@
+{
+  "calibrated_c": 8.7588,
+  "main_net": {
+    "selected": {
+      "hidden_layers": [
+        150,
+        150
+      ]
+    }
+  },
+  "projection_net": {
+    "selected": {
+      "hidden_layers": [
+        150,
+        150
+      ]
+    }
+  }
+}

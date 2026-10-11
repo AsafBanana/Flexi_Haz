@@ -1,82 +1,63 @@
 # FLEXI-Haz Experiments
 
-This directory contains the reproducible experiments accompanying the
-FLEXI-Haz implementation and report.
-
-Two experiments are included:
+Reproducible experiments comparing partially linear **FLEXI-Haz** with the
+proportional-hazards DNN of **Zhong, Mueller & Wang (2022)** for
+treatment-effect estimation:
 
 ``` text
 experiments/
-├── simulation/
-└── rotterdam/
+├── setting1/    six-setting simulation (PH / non-PH x Z-X correlation), scalar theta_0 = log 1.5
+├── setting2/    two-coefficient simulation, theta_0 = (1, -1), nonlinear non-PH mechanism
+└── rotterdam/   Rotterdam breast-cancer data, hormonal therapy and chemotherapy effects
 ```
 
-## Simulation study
+## Setting 1 (`setting1/`)
 
-`simulation/` contains the controlled simulation used to evaluate both
-prediction and inference under a nonlinear, non-proportional-hazards
-data-generating mechanism.
+`gamma in {0, 0.5}` (proportional / time-varying X effect) times
+`rho in {0, 0.5, 0.75}` (R^2 of Z given X), 30% censoring, 200 replications,
+`n = 4000` in the report (1000, 2000 for the n-sweep). FLEXI-Haz: 4 warm-started
+learning-rate phases, theta learning rate x20, exact theta refinement at each
+phase boundary, 5 restarts selected by the efficient score, cross-fitted
+residual SE. Zhong: 3 learning-rate phases, 5 restarts selected by validation
+loss, profile-likelihood refinement, additive residual-net SE. Architectures
+from a 35-point grid (and Zhong's 7 learning rates) on an independent tuning
+dataset; the selections are in `setting1/configs/`.
+See [`setting1/setting1_README.md`](setting1/setting1_README.md).
 
-The experiment compares:
+## Setting 2 (`setting2/`)
 
--   partially linear FLEXI-Haz;
--   fully nonparametric FLEXI-Haz;
--   Zhong et al. (2022);
--   Cox proportional hazards;
--   Random Survival Forest.
+`h(t | X, Z) = 0.1 exp{(0.1 + f(X)^2) t + theta_0' Z}` with `theta_0 = (1, -1)`,
+`n = 8000`, 200 replications and a fixed test set of 10,000. Both models are
+fitted with `FlexiHazardModel` (`--model-type flexihaz | zhong`). Tuning on an
+independent dataset with five common folds: the 27 Table-7 architectures at a
+fixed learning rate for FLEXI-Haz, the same architectures x Zhong's
+learning-rate grid for Zhong. Zhong is trained with its own recipe (one
+constant-rate phase, no theta refinement).
+See [`setting2/setting2_README.md`](setting2/setting2_README.md).
 
-The final study consists of 200 training replications with (n=8000) and
-a common fixed test set of 10,000 subjects.
+## Rotterdam (`rotterdam/`)
 
-See [`simulation/simulation_README.md`](simulation/simulation_README.md) for the
-data-generating mechanism, tuning protocol, execution commands, output
-structure, and aggregation procedure.
-
-## Rotterdam breast-cancer study
-
-`rotterdam/` compares the treatment-effect estimates of partially linear
-FLEXI-Haz and of the Zhong et al. (2022) proportional-hazards DNN on the
-Rotterdam breast-cancer data (2,982 patients), for hormonal therapy and
-chemotherapy overall (`standard` design) and split by estrogen-receptor
-status at ER = 61 (`er_interaction` design).
-
-Both models are fitted with `FlexiHazardModel` under one protocol: five
-shared outer folds, a per-fold exhaustive architecture grid (depth 2-6,
-width 25-500) at a fixed learning rate, five random restarts, and
-cross-fitted residual-projection standard errors. FLEXI-Haz uses a x20
-learning-rate multiplier for `theta`; Zhong is run with its own training
-recipe (`--zhong-plain`).
-
-See [`rotterdam/rotterdam_README.md`](rotterdam/rotterdam_README.md) for
-the endpoint, covariate construction, protocol and commands.
+Hormonal therapy and chemotherapy effects, overall and split by estrogen
+receptor status, 2,982 patients, five shared outer folds, exhaustive
+architecture grid at a fixed learning rate, five restarts, residual-projection
+SE. FLEXI-Haz uses `theta_lr_multiplier = 20`; Zhong its own recipe.
+See [`rotterdam/rotterdam_README.md`](rotterdam/rotterdam_README.md).
 
 ## Installation
 
-Install FLEXI-Haz from the repository root before running the
-experiments:
+From the repository root:
 
 ``` bash
 pip install -e .
 ```
 
-The comparison models require additional experiment dependencies. In
-particular, Cox PH uses `lifelines`, Random Survival Forest and
-censoring-adjusted metrics use `scikit-survival`, and the Zhong et
-al. implementation uses TensorFlow/Keras.
+The experiments need only the package and its dependencies (`lifelines` for the
+Cox warm start; `scikit-survival` for the prediction metrics of setting 2).
+Scripts can also run from a source checkout by setting
+`FLEXIHAZ_SOURCE_DIR=<repo>/src`.
 
-## Results and generated artifacts
+## Outputs
 
-The repository should retain compact, interpretable outputs needed to
-inspect the reported results, such as:
-
--   selected hyperparameters;
--   tuning trial tables;
--   per-fold or per-replication summary tables where useful;
--   aggregated metrics;
--   treatment-effect summaries;
--   final figures.
-
-Large or regenerable artifacts, including generated synthetic datasets,
-temporary logs, model checkpoints, serialized Optuna studies, and
-smoke-test output directories, should generally be regenerated rather
-than committed.
+Each experiment writes to an `outputs/` (or `results/`) folder next to its
+scripts. These folders are git-ignored: every table in the report is
+regenerated by the commands in the sub-READMEs.

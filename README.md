@@ -23,7 +23,7 @@ $$
 in which all covariates are modeled flexibly by the neural network.
 
 This repository contains the reusable Python implementation, tests, and
-reproducible code and outputs for the simulation study and Rotterdam
+reproducible code for the two simulation settings and the Rotterdam
 breast-cancer application described in the accompanying report. The report
 also provides full explanations of the package, the theoretical background
 and methodology behind FLEXI-Haz, implementation details, experimental
@@ -80,7 +80,8 @@ FLEXI-Haz/
 ├── examples/
 ├── experiments/
 │   ├── experiments_README.md
-│   ├── simulation/   (simulation_README.md)
+│   ├── setting1/     (setting1_README.md)
+│   ├── setting2/     (setting2_README.md)
 │   └── rotterdam/    (rotterdam_README.md)
 ├── tests/
 ├── docs/
@@ -234,51 +235,37 @@ The package is internally divided into focused modules:
 
 ## Experiments
 
-The repository contains two reproducible empirical evaluations under
-`experiments/`.
+The repository contains three reproducible evaluations under `experiments/`,
+all comparing partially linear FLEXI-Haz with the proportional-hazards DNN of
+Zhong et al. (2022) for treatment-effect estimation. See
+[`experiments/experiments_README.md`](experiments/experiments_README.md).
 
-### Simulation study
+### Setting 1: six-setting simulation
 
-The simulation study uses 200 independently generated training datasets
-with $n=8000$, a fixed test set of 10,000 subjects, and administrative
-horizon $\tau=10$. It compares:
+Six data-generating settings (proportional or time-varying covariate effect,
+three levels of Z-X correlation), 30% censoring, 200 replications, scalar
+`theta_0 = log 1.5`. FLEXI-Haz uses four warm-started learning-rate phases, a
+x20 learning rate for `theta`, exact refinement of `theta` after each phase,
+five restarts selected by the efficient score, and cross-fitted residual
+standard errors. See
+[`experiments/setting1/setting1_README.md`](experiments/setting1/setting1_README.md).
 
--   partially linear FLEXI-Haz;
--   fully nonparametric FLEXI-Haz;
--   Zhong et al. (2022);
--   Cox proportional hazards;
--   Random Survival Forest.
+### Setting 2: two-coefficient simulation
 
-The data-generating mechanism contains nonlinear and time-varying
-covariate effects, so the global proportional-hazards assumption is
-violated.
-
-Across the 200 replications, partially linear FLEXI-Haz achieved an
-integrated Brier score of **0.1139** and accurate estimation of the true
-linear coefficients. Its empirical 95% confidence-interval coverage was
-**0.945** for both coefficients.
-
-See
-[`experiments/simulation/simulation_README.md`](experiments/simulation/simulation_README.md)
-for the complete reproduction workflow.
+A nonlinear, non-proportional-hazards mechanism with `theta_0 = (1, -1)`,
+`n = 8000`, 200 replications. Both models are fitted with `FlexiHazardModel`
+(`model_type="flexihaz"` / `"zhong"`) after a grid search on an independent
+tuning dataset with five common folds. See
+[`experiments/setting2/setting2_README.md`](experiments/setting2/setting2_README.md).
 
 ### Rotterdam breast-cancer study
 
-The real-data experiment uses the Rotterdam breast-cancer dataset with
-2,982 patients. The final analysis uses an ER-interaction design with
-separate hormonal-therapy and chemotherapy effects for low- and
-high-estrogen-receptor groups, using ER = 61 as the threshold.
-
-It compares the treatment-effect estimates and confidence intervals of
-partially linear FLEXI-Haz and of the Zhong et al. (2022)
-proportional-hazards DNN, both fitted with `FlexiHazardModel`
-(`model_type="flexihaz"` / `"zhong"`) under one protocol: five shared
-outer folds, a per-fold exhaustive architecture grid at a fixed learning
-rate, five random restarts, and cross-fitted residual-projection standard
-errors. FLEXI-Haz uses `theta_lr_multiplier=20` for its linear branch.
-
-See [`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md)
-for details.
+Hormonal-therapy and chemotherapy effects on the Rotterdam data (2,982
+patients), overall and split by estrogen-receptor status at ER = 61, with five
+shared outer folds, a per-fold exhaustive architecture grid at a fixed learning
+rate, five random restarts, and residual-projection standard errors.
+FLEXI-Haz uses `theta_lr_multiplier=20` for its linear branch. See
+[`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md).
 
 ## Tests
 

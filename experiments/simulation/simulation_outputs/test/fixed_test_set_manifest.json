@@ -1,9 +1,0 @@
-{
-  "administrative_censoring_rate": 0.1088,
-  "event_rate": 0.7645,
-  "n_test": 10000,
-  "observed_censoring_rate": 0.23550000000000004,
-  "path": "simulation_outputs/test/fixed_test_set.npz",
-  "random_censoring_rate": 0.1267,
-  "seed": 221100
-}

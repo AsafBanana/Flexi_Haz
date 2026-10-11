@@ -1,0 +1,2988 @@
+{
+  "gamma": 0.5,
+  "rho": 0.5,
+  "censoring_rate": 0.3,
+  "n": 8000,
+  "k": 3,
+  "nonlinear_scale": 1.0,
+  "calibrated_c": 8.782179023899724,
+  "tuning_seed": 500000,
+  "grid": {
+    "layers": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "neurons": [
+      25,
+      50,
+      100,
+      150,
+      200,
+      300,
+      500
+    ],
+    "learning_rates": [
+      0.0001,
+      0.0005,
+      0.001,
+      0.005,
+      0.01,
+      0.05,
+      0.1
+    ],
+    "dropout_fixed_at": 0.0
+  },
+  "results": [
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.52516508102417,
+      "epochs_run": 3353,
+      "fit_time_sec": 11.820375946000013
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.529977798461914,
+      "epochs_run": 777,
+      "fit_time_sec": 2.071872165000059
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.5341386795043945,
+      "epochs_run": 371,
+      "fit_time_sec": 0.9862621800000397
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.529186725616455,
+      "epochs_run": 128,
+      "fit_time_sec": 0.3423568759999398
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.529367923736572,
+      "epochs_run": 84,
+      "fit_time_sec": 0.22486438200007797
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.5312089920043945,
+      "epochs_run": 55,
+      "fit_time_sec": 0.14782044799994765
+    },
+    {
+      "hidden_layers": [
+        25,
+        25
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.528876304626465,
+      "epochs_run": 80,
+      "fit_time_sec": 0.21434224900008303
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.529095649719238,
+      "epochs_run": 2013,
+      "fit_time_sec": 5.3637381860000914
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.529535293579102,
+      "epochs_run": 463,
+      "fit_time_sec": 1.2324781410000014
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.530068874359131,
+      "epochs_run": 279,
+      "fit_time_sec": 0.7353412109998771
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.522741794586182,
+      "epochs_run": 106,
+      "fit_time_sec": 0.27894731900005354
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.519541263580322,
+      "epochs_run": 80,
+      "fit_time_sec": 0.21198477400002957
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.53261137008667,
+      "epochs_run": 70,
+      "fit_time_sec": 0.18526233500006128
+    },
+    {
+      "hidden_layers": [
+        50,
+        50
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.5413103103637695,
+      "epochs_run": 74,
+      "fit_time_sec": 0.19547027199996592
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.5215253829956055,
+      "epochs_run": 1212,
+      "fit_time_sec": 3.189621587000147
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.519225120544434,
+      "epochs_run": 281,
+      "fit_time_sec": 0.7479676660000223
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.519459247589111,
+      "epochs_run": 170,
+      "fit_time_sec": 0.4534372450000319
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.515529632568359,
+      "epochs_run": 81,
+      "fit_time_sec": 0.21694753399992805
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.51305627822876,
+      "epochs_run": 64,
+      "fit_time_sec": 0.1716844680001941
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.521968364715576,
+      "epochs_run": 74,
+      "fit_time_sec": 0.19868026900007862
+    },
+    {
+      "hidden_layers": [
+        100,
+        100
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.538390159606934,
+      "epochs_run": 85,
+      "fit_time_sec": 0.22705975000008038
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.517763137817383,
+      "epochs_run": 785,
+      "fit_time_sec": 2.0829514070001096
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.517670154571533,
+      "epochs_run": 209,
+      "fit_time_sec": 0.5555471489999491
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.516984939575195,
+      "epochs_run": 132,
+      "fit_time_sec": 0.3526330209999742
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.51346492767334,
+      "epochs_run": 66,
+      "fit_time_sec": 0.17777858699992066
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.515045642852783,
+      "epochs_run": 58,
+      "fit_time_sec": 0.15603407799994784
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.523134708404541,
+      "epochs_run": 82,
+      "fit_time_sec": 0.21990200799996273
+    },
+    {
+      "hidden_layers": [
+        150,
+        150
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.535248279571533,
+      "epochs_run": 131,
+      "fit_time_sec": 0.3495033120000244
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.520961761474609,
+      "epochs_run": 601,
+      "fit_time_sec": 1.6020732829999815
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518804550170898,
+      "epochs_run": 165,
+      "fit_time_sec": 0.4427611359999446
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.519344806671143,
+      "epochs_run": 114,
+      "fit_time_sec": 0.3046184390000235
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.519148826599121,
+      "epochs_run": 65,
+      "fit_time_sec": 0.17380497699991793
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.522205829620361,
+      "epochs_run": 60,
+      "fit_time_sec": 0.15989982799987956
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.527064323425293,
+      "epochs_run": 102,
+      "fit_time_sec": 0.27047761599988007
+    },
+    {
+      "hidden_layers": [
+        200,
+        200
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.543778896331787,
+      "epochs_run": 169,
+      "fit_time_sec": 0.44603303899998537
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.518243312835693,
+      "epochs_run": 455,
+      "fit_time_sec": 1.2043957189998764
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518344402313232,
+      "epochs_run": 141,
+      "fit_time_sec": 0.3775235040000098
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.517849445343018,
+      "epochs_run": 97,
+      "fit_time_sec": 0.2600584560000243
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.515995502471924,
+      "epochs_run": 60,
+      "fit_time_sec": 0.16185637700004918
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5174455642700195,
+      "epochs_run": 76,
+      "fit_time_sec": 0.2043310730000485
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.532046318054199,
+      "epochs_run": 108,
+      "fit_time_sec": 0.28994832099988344
+    },
+    {
+      "hidden_layers": [
+        300,
+        300
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.10675552899988361
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.517521858215332,
+      "epochs_run": 273,
+      "fit_time_sec": 0.9964453280001635
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.516741752624512,
+      "epochs_run": 98,
+      "fit_time_sec": 0.35921996100000797
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.517300605773926,
+      "epochs_run": 75,
+      "fit_time_sec": 0.2739549460000035
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.5181403160095215,
+      "epochs_run": 85,
+      "fit_time_sec": 0.3078711849998399
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.522815704345703,
+      "epochs_run": 73,
+      "fit_time_sec": 0.2643732369999725
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.527045249938965,
+      "epochs_run": 144,
+      "fit_time_sec": 0.5131951469998057
+    },
+    {
+      "hidden_layers": [
+        500,
+        500
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.13352229499992063
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.530205726623535,
+      "epochs_run": 2007,
+      "fit_time_sec": 5.760359800999822
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.531680107116699,
+      "epochs_run": 433,
+      "fit_time_sec": 1.2443210649998946
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.532752990722656,
+      "epochs_run": 262,
+      "fit_time_sec": 0.7544227260000298
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.531945705413818,
+      "epochs_run": 104,
+      "fit_time_sec": 0.3018198760000814
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526019096374512,
+      "epochs_run": 81,
+      "fit_time_sec": 0.2361939600000369
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.533533096313477,
+      "epochs_run": 72,
+      "fit_time_sec": 0.21085927599983734
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.549713134765625,
+      "epochs_run": 78,
+      "fit_time_sec": 0.2269341799999438
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.524772644042969,
+      "epochs_run": 1019,
+      "fit_time_sec": 2.9718887890001042
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5257673263549805,
+      "epochs_run": 254,
+      "fit_time_sec": 0.7474241180000263
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.522824287414551,
+      "epochs_run": 171,
+      "fit_time_sec": 0.501883958999997
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.52269983291626,
+      "epochs_run": 96,
+      "fit_time_sec": 0.282871575000172
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5184431076049805,
+      "epochs_run": 64,
+      "fit_time_sec": 0.1890837000000829
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.539823532104492,
+      "epochs_run": 73,
+      "fit_time_sec": 0.21588438200001292
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.53617000579834,
+      "epochs_run": 124,
+      "fit_time_sec": 0.36552353699994455
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.525135517120361,
+      "epochs_run": 486,
+      "fit_time_sec": 1.420612678999987
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.522477149963379,
+      "epochs_run": 160,
+      "fit_time_sec": 0.46837295900013487
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.521670818328857,
+      "epochs_run": 109,
+      "fit_time_sec": 0.3202169359999516
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.5239410400390625,
+      "epochs_run": 59,
+      "fit_time_sec": 0.1734477390000393
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.52581787109375,
+      "epochs_run": 62,
+      "fit_time_sec": 0.1827229409998381
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.526564121246338,
+      "epochs_run": 75,
+      "fit_time_sec": 0.22010011399993346
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.560985565185547,
+      "epochs_run": 113,
+      "fit_time_sec": 0.3330071840000528
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.522359371185303,
+      "epochs_run": 349,
+      "fit_time_sec": 1.0196263210000325
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5242180824279785,
+      "epochs_run": 120,
+      "fit_time_sec": 0.35202150200007054
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.523618698120117,
+      "epochs_run": 85,
+      "fit_time_sec": 0.2501293519999308
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.513938903808594,
+      "epochs_run": 57,
+      "fit_time_sec": 0.1686991990000024
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5181097984313965,
+      "epochs_run": 57,
+      "fit_time_sec": 0.17028321599991614
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.529694080352783,
+      "epochs_run": 152,
+      "fit_time_sec": 0.44630945299991254
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.11719811300008587
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.522398471832275,
+      "epochs_run": 293,
+      "fit_time_sec": 0.8599426009998297
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5198493003845215,
+      "epochs_run": 109,
+      "fit_time_sec": 0.3159225429999424
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.522579193115234,
+      "epochs_run": 80,
+      "fit_time_sec": 0.23274567499993282
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.516616344451904,
+      "epochs_run": 57,
+      "fit_time_sec": 0.16892322699982287
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.525533199310303,
+      "epochs_run": 67,
+      "fit_time_sec": 0.19944699699999546
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.546261787414551,
+      "epochs_run": 118,
+      "fit_time_sec": 0.34542965500008904
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 38,
+      "fit_time_sec": 0.11303493599984904
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.518836975097656,
+      "epochs_run": 209,
+      "fit_time_sec": 0.722762782000018
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5168986320495605,
+      "epochs_run": 85,
+      "fit_time_sec": 0.2981633150000107
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.517059326171875,
+      "epochs_run": 64,
+      "fit_time_sec": 0.22432275300002402
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.514814853668213,
+      "epochs_run": 56,
+      "fit_time_sec": 0.19695207700010542
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.517139434814453,
+      "epochs_run": 75,
+      "fit_time_sec": 0.2593853200000922
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.552154064178467,
+      "epochs_run": 204,
+      "fit_time_sec": 0.6998544450000281
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.12651141500009544
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.519293785095215,
+      "epochs_run": 140,
+      "fit_time_sec": 0.8711914729999535
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518383026123047,
+      "epochs_run": 70,
+      "fit_time_sec": 0.4359398819999569
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.5162224769592285,
+      "epochs_run": 59,
+      "fit_time_sec": 0.3631994909999321
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.518594264984131,
+      "epochs_run": 74,
+      "fit_time_sec": 0.4415149730000394
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.523103713989258,
+      "epochs_run": 85,
+      "fit_time_sec": 0.5075703970001086
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.22666270400009125
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.21570280500009176
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.546006679534912,
+      "epochs_run": 1616,
+      "fit_time_sec": 5.196340037999789
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.54115104675293,
+      "epochs_run": 371,
+      "fit_time_sec": 1.1686152729998867
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.542279243469238,
+      "epochs_run": 224,
+      "fit_time_sec": 0.7100854689999778
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.543455123901367,
+      "epochs_run": 110,
+      "fit_time_sec": 0.350497187999963
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5396575927734375,
+      "epochs_run": 87,
+      "fit_time_sec": 0.2754326099998252
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.526744842529297,
+      "epochs_run": 73,
+      "fit_time_sec": 0.23369597600003544
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.556712627410889,
+      "epochs_run": 106,
+      "fit_time_sec": 0.3407007660000545
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.522311210632324,
+      "epochs_run": 782,
+      "fit_time_sec": 2.5076032380000015
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.520329475402832,
+      "epochs_run": 222,
+      "fit_time_sec": 0.7220439469999747
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.521881580352783,
+      "epochs_run": 155,
+      "fit_time_sec": 0.49730692599996473
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.5255045890808105,
+      "epochs_run": 86,
+      "fit_time_sec": 0.27492431599989686
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.523464679718018,
+      "epochs_run": 66,
+      "fit_time_sec": 0.21611798100002488
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.5358805656433105,
+      "epochs_run": 91,
+      "fit_time_sec": 0.3001369189998968
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.554500102996826,
+      "epochs_run": 137,
+      "fit_time_sec": 0.45128651200002423
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.523962020874023,
+      "epochs_run": 377,
+      "fit_time_sec": 1.214412596000102
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.525326251983643,
+      "epochs_run": 130,
+      "fit_time_sec": 0.42572854499985624
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.521556377410889,
+      "epochs_run": 95,
+      "fit_time_sec": 0.31093500599990875
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.518105983734131,
+      "epochs_run": 67,
+      "fit_time_sec": 0.219118232000028
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.522690296173096,
+      "epochs_run": 58,
+      "fit_time_sec": 0.19092493299990565
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.530505180358887,
+      "epochs_run": 113,
+      "fit_time_sec": 0.3714838820001205
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 41,
+      "fit_time_sec": 0.13865602800001398
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.523166179656982,
+      "epochs_run": 251,
+      "fit_time_sec": 0.8155126770000152
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.522703647613525,
+      "epochs_run": 106,
+      "fit_time_sec": 0.34496321500000704
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.524198055267334,
+      "epochs_run": 77,
+      "fit_time_sec": 0.2524917039997945
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.522599697113037,
+      "epochs_run": 63,
+      "fit_time_sec": 0.20669268599999668
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.533536911010742,
+      "epochs_run": 79,
+      "fit_time_sec": 0.26078819199983627
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.533773422241211,
+      "epochs_run": 118,
+      "fit_time_sec": 0.389155331999973
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 38,
+      "fit_time_sec": 0.12642777800010663
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.526745319366455,
+      "epochs_run": 208,
+      "fit_time_sec": 0.6880681259999619
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.527584075927734,
+      "epochs_run": 93,
+      "fit_time_sec": 0.3050882319998891
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.526745796203613,
+      "epochs_run": 75,
+      "fit_time_sec": 0.24440199000014218
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.517892837524414,
+      "epochs_run": 55,
+      "fit_time_sec": 0.18376935099990988
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526636123657227,
+      "epochs_run": 79,
+      "fit_time_sec": 0.2635179840001456
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 41,
+      "fit_time_sec": 0.13886383899989596
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.12416553899993232
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.517510890960693,
+      "epochs_run": 158,
+      "fit_time_sec": 0.7186494530001255
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518984794616699,
+      "epochs_run": 76,
+      "fit_time_sec": 0.34875877100012076
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.517329216003418,
+      "epochs_run": 66,
+      "fit_time_sec": 0.30073930599996856
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.517607688903809,
+      "epochs_run": 77,
+      "fit_time_sec": 0.342981577999808
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.516151428222656,
+      "epochs_run": 66,
+      "fit_time_sec": 0.29357242900005076
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.16184756800021205
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.15940361599996322
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.520878314971924,
+      "epochs_run": 115,
+      "fit_time_sec": 1.0122251000000233
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.519906044006348,
+      "epochs_run": 61,
+      "fit_time_sec": 0.5386268149998159
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.51930046081543,
+      "epochs_run": 61,
+      "fit_time_sec": 0.5336401740000838
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.51957368850708,
+      "epochs_run": 64,
+      "fit_time_sec": 0.5419484430001376
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5245866775512695,
+      "epochs_run": 112,
+      "fit_time_sec": 0.941972461999967
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.29661553300002197
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.2950156290000905
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.546509742736816,
+      "epochs_run": 1094,
+      "fit_time_sec": 3.7422845510000116
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5458292961120605,
+      "epochs_run": 316,
+      "fit_time_sec": 1.0902797310000096
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.544913291931152,
+      "epochs_run": 221,
+      "fit_time_sec": 0.7685112720000689
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.533647060394287,
+      "epochs_run": 109,
+      "fit_time_sec": 0.37611412199998995
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.530211925506592,
+      "epochs_run": 84,
+      "fit_time_sec": 0.28893282399985765
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.537980079650879,
+      "epochs_run": 91,
+      "fit_time_sec": 0.3115900339998916
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.541959285736084,
+      "epochs_run": 105,
+      "fit_time_sec": 0.3572987889999695
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.5241546630859375,
+      "epochs_run": 590,
+      "fit_time_sec": 2.041284327999847
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.52237606048584,
+      "epochs_run": 186,
+      "fit_time_sec": 0.6586972299999161
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.525793075561523,
+      "epochs_run": 135,
+      "fit_time_sec": 0.47689771600016684
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.5226240158081055,
+      "epochs_run": 81,
+      "fit_time_sec": 0.2862311399999271
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.52459716796875,
+      "epochs_run": 65,
+      "fit_time_sec": 0.2340956970001571
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.5268731117248535,
+      "epochs_run": 100,
+      "fit_time_sec": 0.3512895879998723
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.550090789794922,
+      "epochs_run": 98,
+      "fit_time_sec": 0.33802784299996347
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.525960445404053,
+      "epochs_run": 291,
+      "fit_time_sec": 0.9968893909999679
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.525123596191406,
+      "epochs_run": 118,
+      "fit_time_sec": 0.4051720209999985
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.522200584411621,
+      "epochs_run": 91,
+      "fit_time_sec": 0.31398287599995456
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.517121315002441,
+      "epochs_run": 65,
+      "fit_time_sec": 0.22522532299990417
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.527802467346191,
+      "epochs_run": 65,
+      "fit_time_sec": 0.22471409300010237
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.539280891418457,
+      "epochs_run": 86,
+      "fit_time_sec": 0.29675362800003313
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.1359356600000865
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.523055076599121,
+      "epochs_run": 220,
+      "fit_time_sec": 0.7527624269998796
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5251970291137695,
+      "epochs_run": 96,
+      "fit_time_sec": 0.3308099989999391
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.525135517120361,
+      "epochs_run": 83,
+      "fit_time_sec": 0.28617143999986183
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.516317844390869,
+      "epochs_run": 59,
+      "fit_time_sec": 0.20470934900004067
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.520784378051758,
+      "epochs_run": 65,
+      "fit_time_sec": 0.22490377899998748
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.13612701900001412
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.1291862549999223
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.525506019592285,
+      "epochs_run": 180,
+      "fit_time_sec": 0.6483895069998198
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.525852203369141,
+      "epochs_run": 91,
+      "fit_time_sec": 0.3309108060000199
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.523080348968506,
+      "epochs_run": 75,
+      "fit_time_sec": 0.2725366480001412
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.518309116363525,
+      "epochs_run": 67,
+      "fit_time_sec": 0.24204378000013094
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526294231414795,
+      "epochs_run": 76,
+      "fit_time_sec": 0.2726287370001046
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 38,
+      "fit_time_sec": 0.1383228689999214
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.13440327300008903
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.521321773529053,
+      "epochs_run": 141,
+      "fit_time_sec": 0.8151026900000033
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518013954162598,
+      "epochs_run": 85,
+      "fit_time_sec": 0.4902447449999272
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.5106987953186035,
+      "epochs_run": 69,
+      "fit_time_sec": 0.3985283290001007
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.51446533203125,
+      "epochs_run": 61,
+      "fit_time_sec": 0.34524637300000904
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526483535766602,
+      "epochs_run": 84,
+      "fit_time_sec": 0.4683519289999367
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.20329509699990922
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.19868256900008419
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.521697044372559,
+      "epochs_run": 108,
+      "fit_time_sec": 1.2323935580000125
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.518313884735107,
+      "epochs_run": 68,
+      "fit_time_sec": 0.7698232699999608
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.51886510848999,
+      "epochs_run": 63,
+      "fit_time_sec": 0.7115824449999764
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.523460388183594,
+      "epochs_run": 84,
+      "fit_time_sec": 0.9091494079998483
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5254902839660645,
+      "epochs_run": 89,
+      "fit_time_sec": 0.9618269869999949
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.3908623310001076
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.39072213600002215
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.538619041442871,
+      "epochs_run": 1150,
+      "fit_time_sec": 4.218964338999967
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.536696434020996,
+      "epochs_run": 316,
+      "fit_time_sec": 1.1520819800000481
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.5379414558410645,
+      "epochs_run": 208,
+      "fit_time_sec": 0.7613349929999913
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.530945777893066,
+      "epochs_run": 110,
+      "fit_time_sec": 0.4023198830000183
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526232719421387,
+      "epochs_run": 91,
+      "fit_time_sec": 0.3332958599999074
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.535258769989014,
+      "epochs_run": 100,
+      "fit_time_sec": 0.3660585439999977
+    },
+    {
+      "hidden_layers": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.546451091766357,
+      "epochs_run": 124,
+      "fit_time_sec": 0.4532570249998571
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.531035423278809,
+      "epochs_run": 543,
+      "fit_time_sec": 1.990390151000156
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.530529022216797,
+      "epochs_run": 190,
+      "fit_time_sec": 0.7044651290000274
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.5282883644104,
+      "epochs_run": 133,
+      "fit_time_sec": 0.49612366899987137
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.52099084854126,
+      "epochs_run": 83,
+      "fit_time_sec": 0.31772698599979776
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.526116371154785,
+      "epochs_run": 70,
+      "fit_time_sec": 0.2700929139998607
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.526397705078125,
+      "epochs_run": 118,
+      "fit_time_sec": 0.44474347000004855
+    },
+    {
+      "hidden_layers": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.559640407562256,
+      "epochs_run": 108,
+      "fit_time_sec": 0.4086237169999549
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.52591609954834,
+      "epochs_run": 277,
+      "fit_time_sec": 1.0630666680001468
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.523972034454346,
+      "epochs_run": 120,
+      "fit_time_sec": 0.4554992640000819
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.522847652435303,
+      "epochs_run": 92,
+      "fit_time_sec": 0.352188938999916
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.521337509155273,
+      "epochs_run": 64,
+      "fit_time_sec": 0.24319978299990908
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.518398284912109,
+      "epochs_run": 59,
+      "fit_time_sec": 0.22318489899998895
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.553142547607422,
+      "epochs_run": 126,
+      "fit_time_sec": 0.4682384469999761
+    },
+    {
+      "hidden_layers": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.14722640999980285
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.530219554901123,
+      "epochs_run": 216,
+      "fit_time_sec": 0.7986353829999189
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5265631675720215,
+      "epochs_run": 104,
+      "fit_time_sec": 0.38941190800005643
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.524349689483643,
+      "epochs_run": 84,
+      "fit_time_sec": 0.3184691940000448
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.520436763763428,
+      "epochs_run": 72,
+      "fit_time_sec": 0.27228162699998393
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.5183491706848145,
+      "epochs_run": 57,
+      "fit_time_sec": 0.21772633000000496
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.5471649169921875,
+      "epochs_run": 161,
+      "fit_time_sec": 0.6082464480000453
+    },
+    {
+      "hidden_layers": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 37,
+      "fit_time_sec": 0.14615362099993945
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.529561519622803,
+      "epochs_run": 177,
+      "fit_time_sec": 0.7377969950000534
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.52752161026001,
+      "epochs_run": 93,
+      "fit_time_sec": 0.3931069639997986
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.524438381195068,
+      "epochs_run": 77,
+      "fit_time_sec": 0.32587028899979487
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.527344703674316,
+      "epochs_run": 71,
+      "fit_time_sec": 0.3007471579999219
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.519464492797852,
+      "epochs_run": 88,
+      "fit_time_sec": 0.3642243710000912
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 39,
+      "fit_time_sec": 0.16134990099999413
+    },
+    {
+      "hidden_layers": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.14950509499999498
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.51880407333374,
+      "epochs_run": 143,
+      "fit_time_sec": 1.0122469660000206
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.515161991119385,
+      "epochs_run": 80,
+      "fit_time_sec": 0.5649719349999032
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.513998508453369,
+      "epochs_run": 71,
+      "fit_time_sec": 0.4971192850000534
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.516757965087891,
+      "epochs_run": 60,
+      "fit_time_sec": 0.41040174199997637
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.531991958618164,
+      "epochs_run": 90,
+      "fit_time_sec": 0.6057630880000033
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.23876952699993126
+    },
+    {
+      "hidden_layers": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.23844512799996664
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0001,
+      "val_loss": 6.521298885345459,
+      "epochs_run": 109,
+      "fit_time_sec": 1.5265257700000348
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.0005,
+      "val_loss": 6.5153398513793945,
+      "epochs_run": 72,
+      "fit_time_sec": 1.0071249830000397
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.001,
+      "val_loss": 6.51854944229126,
+      "epochs_run": 76,
+      "fit_time_sec": 1.055015401999981
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.005,
+      "val_loss": 6.526717662811279,
+      "epochs_run": 84,
+      "fit_time_sec": 1.1225618419998682
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.01,
+      "val_loss": 6.529436111450195,
+      "epochs_run": 83,
+      "fit_time_sec": 1.1030386130000807
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.05,
+      "val_loss": 6.753471374511719,
+      "epochs_run": 36,
+      "fit_time_sec": 0.4701883519999228
+    },
+    {
+      "hidden_layers": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ],
+      "learning_rate": 0.1,
+      "val_loss": 6.753536701202393,
+      "epochs_run": 36,
+      "fit_time_sec": 0.47094802099991284
+    }
+  ],
+  "selected": {
+    "hidden_layers": [
+      150,
+      150
+    ],
+    "learning_rate": 0.001,
+    "note": "FORCED 2-layer, width matches FlexiHaz-selected arch for this rho"
+  }
+}
