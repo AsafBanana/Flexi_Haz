@@ -4,7 +4,8 @@ Treatment-effect estimation with partially linear **FLEXI-Haz** versus the
 proportional-hazards DNN of **Zhong, Mueller & Wang (2022)** under six
 data-generating settings, `gamma in {0, 0.5}` (PH / non-PH) times
 `rho in {0, 0.5, 0.75}` (R^2 of Z given X), 30% censoring, 200 replications
-per setting. The target is the scalar coefficient `theta_0 = log 1.5 = 0.4055`.
+per setting, at `n = 8000` and `n = 4000`. The target is the scalar coefficient
+`theta_0 = log 1.5 = 0.4055`.
 
 ## Files
 
@@ -12,13 +13,13 @@ per setting. The target is the scalar coefficient `theta_0 = log 1.5 = 0.4055`.
 dgm_additional.py        data-generating mechanism and censoring calibration
 common.py                shared constants (seeds, lr phases) and FLEXI-Haz's exact theta refinement
 crossfit_residuals.py    cross-fitted Z - E[Z | X, t] residuals (FLEXI-Haz score and SE)
-tune_flexihaz_grid.py    FLEXI-Haz architecture grid (35 archs, fixed lr) on the tuning dataset
-run_flexihaz_reps.py     FLEXI-Haz replications: 4 lr phases, theta lr x20, 5 restarts, efficient-score selection
+tune_flexihaz_grid.py    FLEXI-Haz main-net and projection-net grids (35 archs each, fixed lr) on the tuning dataset
+run_flexihaz_reps.py     FLEXI-Haz replications: warm-started lr phases, 5 restarts, efficient-score selection
 zhong_ph_prod.py         Zhong model: CoxPHDNN, Breslow loss, additive residual net, profile-likelihood refinement
 tune_zhong_grid.py       Zhong architecture x learning-rate grid (35 x 7) on the tuning dataset
 run_zhong_reps.py        Zhong replications: 3 lr phases, 5 restarts, val-loss selection, refinement
 aggregate_setting1.py    one table: theta, bias, empirical SD, model SE, 90/95% coverage
-configs/                 the per-setting architectures / learning rates used in our runs (see below)
+configs/                 the per-setting architectures / learning rates used in our n = 4000 runs
 ```
 
 Outputs go to `outputs/` (git-ignored).
@@ -47,15 +48,17 @@ piecewise-exponential likelihood on the expanded data (grid of all observed
 times), ReLU net, weight decay 0, dropout 0, standardized inputs, Cox (X+Z)
 warm start of `theta`, validation fraction 0.33 by subject.
 
-- learning-rate phases `1e-3 -> 1e-4 -> 1e-5 -> 1e-6`, warm-started, at most 500
-  epochs each, patience 30 on the validation NLL, best validation loss carried
-  across phases;
-- **theta learning rate x20** the phase rate (`--theta-lr-mult 20`), so the
-  linear branch is not frozen by the small network rate;
+- warm-started learning-rate phases, at most 500 epochs each, patience 30 on
+  the validation NLL, best validation loss carried across phases:
+  `n = 8000`: three phases `1e-3 -> 1e-4 -> 1e-5`, `theta` trained at the
+  network rate; `n = 4000`: four phases `1e-3 -> 1e-4 -> 1e-5 -> 1e-6` with the
+  **theta learning rate x20** the phase rate (`--theta-lr-mult 20`), so that the
+  linear branch is not frozen by the small network rate on the smaller sample;
 - after each phase `theta` is re-solved exactly (L-BFGS on the training rows with
   `g` fixed, `common.refine_theta`);
-- minibatch = ceil(#expanded training rows / 213) (`--main-batches-per-epoch 213`),
-  the same number of optimizer steps per epoch at every n;
+- minibatch of 100,000 expanded rows at `n = 8000`; at `n = 4000`
+  ceil(#expanded training rows / 213) (`--main-batches-per-epoch 213`), which
+  keeps the same number of optimizer steps per epoch;
 - 5 random restarts (seeds 910000-910004); the restart whose **efficient score**
   (orthogonalised score built from cross-fitted residuals `Z - E[Z | X, t]`) is
   closest to zero is reported;
@@ -78,53 +81,55 @@ standardized inputs, Cox (X+Z) warm start.
 ## Tuning
 
 One tuning dataset of size 8000 per setting (seed 500000), 67/33 subject split
-for early stopping, scored by validation loss.
+for early stopping.
 
-- FLEXI-Haz: depth `{2,3,4,5,6}` x width `{25,50,100,150,200,300,500}` (35
-  architectures) with the 3-phase schedule, learning rate not searched. The
-  landscape is flat, so the rule is: among configurations within 1% of the
-  minimum, the one with the fewest layers (`--prefer-fewer-layers`). The
-  projection net reuses the selected architecture.
+- FLEXI-Haz main net: depth `{2,3,4,5,6}` x width `{25,50,100,150,200,300,500}`
+  (35 architectures) with the 3-phase schedule, learning rate not searched,
+  scored by validation NLL. The landscape is flat, so the rule is: among
+  configurations within 1% of the minimum, the one with the fewest layers
+  (`--prefer-fewer-layers`).
+- FLEXI-Haz projection net: its own search over the same 35 architectures,
+  scored by validation MSE of the regression of Z on (X, t) at the training
+  subjects' event times. It does not reuse the main-net architecture.
 - Zhong: the same 35 architectures x learning rates
-  `{1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1}`, argmin of the validation loss.
+  `{1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1}`, argmin of the validation
+  partial likelihood; the residual net reuses the selected architecture, as
+  in the paper.
 
-The architectures / learning rates used in our runs are in `configs/`:
-
-| gamma | rho | FLEXI-Haz main = projection net | Zhong net, lr |
-|------:|----:|----------------------------------|---------------|
-| 0 | 0 | 150x150 | 300x300, 0.01 |
-| 0 | 0.5 | 150x150 | 150x150, 0.0005 |
-| 0 | 0.75 | 150x150 | 150x150, 0.01 |
-| 0.5 | 0 | 300x300 | 300x300, 0.001 |
-| 0.5 | 0.5 | 150x150 | 150x150, 0.001 |
-| 0.5 | 0.75 | 150x150 | 150x150, 0.0001 |
-
-The Zhong configs also contain the full 245-point grid results. The
-unconstrained grid argmins for Zhong (and a re-tuning at n=4000) are listed in
-the report; the production runs used the 2-layer configurations above.
+`configs/` holds the JSON selections used in our `n = 4000` runs
+(`flexihaz_*.json`: main and projection net, where the projection net had been
+set equal to the main net; `zhong_*.json`: net, learning rate and the full grid
+results). Re-running the tuners writes new selections to `outputs/`.
 
 ## Running
 
 Install the package (`pip install -e .` from the repository root; or set
-`FLEXIHAZ_SOURCE_DIR=<repo>/src`). All commands from this directory. `n` is
-`--n`; our runs used `n = 4000` (and 1000, 2000 for the n-sweep).
+`FLEXIHAZ_SOURCE_DIR=<repo>/src`). All commands from this directory; one call
+per setting, `gamma in {0.0, 0.5} x rho in {0.0, 0.5, 0.75}` (shown for
+`gamma = 0.5, rho = 0.5`). Replications can be split with `--rep-start` /
+`--n-reps`.
 
 ``` bash
-# (optional) re-tune: one call per setting
+# tuning (one tuning dataset of 8000 per setting)
 python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 --prefer-fewer-layers
 python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000
 
-# FLEXI-Haz, 200 replications of one setting at n = 4000 (split with --rep-start/--n-reps)
+# n = 8000: FLEXI-Haz with three lr phases (1e-3, 1e-4, 1e-5), theta at the network rate
+python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
+    --n-reps 200 --n-init 5 --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
+
+# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20
 python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
     --n-reps 200 --n-init 5 --theta-lr-mult 20 --lr-phases 1e-3,1e-4,1e-5,1e-6 \
     --main-batches-per-epoch 213 --config configs/flexihaz_gamma0.5_rho0.5.json
 
-# Zhong, 200 replications of the same setting
+# Zhong, both sample sizes (same recipe)
+python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
+    --n-reps 200 --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
 python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
     --n-reps 200 --config configs/zhong_gamma0.5_rho0.5.json
 
-# repeat for gamma in {0.0, 0.5} x rho in {0.0, 0.5, 0.75}, then
-python aggregate_setting1.py          # -> outputs/setting1_summary.csv
+python aggregate_setting1.py          # -> outputs/setting1_summary.csv (one row per model, setting and n)
 ```
 
 Per-replication CSVs record the selected restart, all restarts' estimates,

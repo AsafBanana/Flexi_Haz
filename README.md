@@ -243,11 +243,11 @@ Zhong et al. (2022) for treatment-effect estimation. See
 ### Setting 1: six-setting simulation
 
 Six data-generating settings (proportional or time-varying covariate effect,
-three levels of Z-X correlation), 30% censoring, 200 replications, scalar
-`theta_0 = log 1.5`. FLEXI-Haz uses four warm-started learning-rate phases, a
-x20 learning rate for `theta`, exact refinement of `theta` after each phase,
-five restarts selected by the efficient score, and cross-fitted residual
-standard errors. See
+three levels of Z-X correlation), 30% censoring, 200 replications at
+`n = 8000` and `n = 4000`, scalar `theta_0 = log 1.5`. FLEXI-Haz uses
+warm-started learning-rate phases (with a x20 learning rate for `theta` at
+n = 4000), exact refinement of `theta` after each phase, five restarts
+selected by the efficient score, and cross-fitted residual standard errors. See
 [`experiments/setting1/setting1_README.md`](experiments/setting1/setting1_README.md).
 
 ### Setting 2: two-coefficient simulation

@@ -1,18 +1,16 @@
-"""Hyperparameter grid search for FlexiHaz's main net, using the SAME
-(layers x neurons) grid as zhong_tune_hyperparams.py -- {1,2,3,4,5,6,8}
-layers x {25,50,100,150,200,300,500} neurons, 49 configs -- MINUS the
-learning-rate dimension: FlexiHaz keeps its own fixed 3-phase warm-start
-schedule (1e-3->1e-4->1e-5), not searched. Dropout fixed at 0 (matches
-tune_hyperparams.py's own earlier finding that dropout hurts here).
+"""Architecture grid search for FLEXI-Haz's main net AND projection (residual) net on
+the setting-1 tuning dataset.
 
-Selection metric: lowest val_loss over the 3-phase schedule, same as
-tune_hyperparams.py.
+Main net: depth {2,3,4,5,6} x width {25,50,100,150,200,300,500} (35 configurations),
+trained with the fixed 3-phase warm-start schedule (1e-3 -> 1e-4 -> 1e-5), weight decay
+0, dropout 0; the learning rate is not searched. Scored by the best validation NLL
+(67/33 subject split). Selection: the argmin, or with --prefer-fewer-layers the
+fewest-layer configuration within 1% of the minimum (the landscape is flat).
 
-The projection (residual) network does NOT get an independent grid search
-here -- it REUSES the selected main-net architecture, matching Zhong's own
-convention (zhong_tune_hyperparams.py's residual net "is similar to the
-network we use to maximize log partial likelihoods," i.e., same architecture,
-no separate search).
+Projection net (regression of Z on (X, t) at the training subjects' event times, used
+for the cross-fitted residuals of the score and the SE): its OWN grid search over the
+same 35 configurations, scored by validation MSE on an inner 80/20 split of the event
+subjects; it does not reuse the main-net architecture.
 """
 
 from __future__ import annotations
@@ -32,7 +30,8 @@ import common  # noqa: E402,F401  (adds FLEXIHAZ_SOURCE_DIR to sys.path)
 
 from flexihaz import FlexiHazardModel  # noqa: E402
 from flexihaz.data import build_time_grid, make_expanded_data  # noqa: E402
-from flexihaz.networks import FlexiHazardNet  # noqa: E402
+from flexihaz.networks import FlexiHazardNet, ProjectionNet  # noqa: E402
+from flexihaz.inference import _fit_projection_net, _predict_projection  # noqa: E402
 from flexihaz.preprocessing import Standardizer, validate_survival_inputs, truncate_at_tau  # noqa: E402
 from flexihaz.utils import set_seed  # noqa: E402
 
@@ -46,6 +45,11 @@ MAIN_PATIENCE = 30
 
 LAYERS = [2, 3, 4, 5, 6]
 NEURONS = [25, 50, 100, 150, 200, 300, 500]
+PROJECTION_LR = 1e-3
+PROJECTION_BATCH = 2048
+PROJECTION_MAX_EPOCHS = 300
+PROJECTION_PATIENCE = 30
+PROJ_VAL_FRAC = 0.20
 
 
 def _fit_one_seed(hidden_layers, seed, X_scaled, Z_scaled, Z_raw, T, delta, tau, time_grid,
@@ -94,6 +98,26 @@ def evaluate_main_config(hidden_layers, X_scaled, Z_scaled, Z_raw, T, delta, tau
                               time_grid, expanded, device, X_raw, z_scaler)
     fit_time = time.perf_counter() - t0
     return dict(hidden_layers=list(hidden_layers), dropout=0.0, val_loss=best_val, fit_time_sec=fit_time)
+
+
+def evaluate_proj_config(hidden_layers, X_ev, T_ev, Z_ev, device):
+    """One projection-net fit Z ~ (X, t) on the training subjects' events, scored by val MSE."""
+    t0 = time.perf_counter()
+    n_ev = len(X_ev)
+    rng = np.random.default_rng(TUNING_SEED + 1)
+    perm = rng.permutation(n_ev)
+    n_val = max(1, int(PROJ_VAL_FRAC * n_ev))
+    va, tr = perm[:n_val], perm[n_val:]
+    set_seed(TUNING_SEED)
+    proj = ProjectionNet(X_ev.shape[1], hidden_layers=hidden_layers, activation="relu", dropout=0.0)
+    proj = _fit_projection_net(
+        proj, X_ev[tr], T_ev[tr], Z_ev[tr], X_ev[va], T_ev[va], Z_ev[va],
+        device=device, lr=PROJECTION_LR, weight_decay=0.0, batch_size=PROJECTION_BATCH,
+        max_epochs=PROJECTION_MAX_EPOCHS, patience=PROJECTION_PATIENCE,
+    )
+    pred_va = _predict_projection(proj, X_ev[va], T_ev[va], device=device, batch_size=PROJECTION_BATCH)
+    val_mse = float(np.mean((pred_va.reshape(-1) - Z_ev[va].reshape(-1)) ** 2))
+    return dict(hidden_layers=list(hidden_layers), val_mse=val_mse, fit_time_sec=time.perf_counter() - t0)
 
 
 def select_preferred(grid_results, tol_frac=0.01):
@@ -199,16 +223,33 @@ def main():
     else:
         main_selected = min(main_results, key=lambda r: r["val_loss"])
     print(f"main net selected: {main_selected}", flush=True)
-    # projection net reuses the main net's architecture -- no separate search
-    proj_selected = dict(hidden_layers=main_selected["hidden_layers"])
-    print(f"projection net (reused from main): {proj_selected}", flush=True)
+
+    # ---- projection net: its own grid, on the training subjects' events ----
+    dummy = FlexiHazardModel(hidden_layers=(64, 64), grid_size=2, learning_rate=LR_PHASES[0], batch_size=BATCH_SIZE,
+                             tau=tau, device=device, seed=TUNING_SEED, verbose=0)
+    dummy.time_scale_ = float(tau) if dummy.scale_time else 1.0
+    train_idx, _ = dummy._train_val_indices(expanded["subject_id"])
+    train_subject_ids = np.unique(expanded["subject_id"][train_idx])
+    ev = train_subject_ids[delta[train_subject_ids] == 1]
+    X_ev = X_scaled[ev].astype(np.float32)
+    T_ev = dummy._prepare_time_for_network(T[ev]).astype(np.float32)
+    Z_ev = Z_scaled[ev].reshape(-1).astype(np.float32)
+    proj_results = []
+    for n_layers in LAYERS:
+        for n_neurons in NEURONS:
+            r = evaluate_proj_config((n_neurons,) * n_layers, X_ev, T_ev, Z_ev, device)
+            proj_results.append(r)
+            print(f"proj layers={n_layers} neurons={n_neurons}: val_mse={r['val_mse']:.6f} time={r['fit_time_sec']:.1f}s", flush=True)
+    proj_selected = min(proj_results, key=lambda r: r["val_mse"])
+    print(f"projection net selected: {proj_selected}", flush=True)
 
     out = dict(
         gamma=cfg.gamma, rho=cfg.rho, censoring_rate=cfg.censoring_rate, n=cfg.n, k=cfg.k,
         nonlinear_scale=cfg.nonlinear_scale, calibrated_c=calibrated_c, tuning_seed=TUNING_SEED,
         grid=dict(layers=LAYERS, neurons=NEURONS, dropout_fixed_at=0.0),
         main_net=dict(grid=main_results, selected=main_selected),
-        projection_net=dict(selected=proj_selected, note="reuses main net architecture, no separate search"),
+        projection_net=dict(grid=proj_results, selected=proj_selected,
+                            note="own grid search (val MSE of Z ~ (X, t) on training-subject events)"),
     )
     out_json.parent.mkdir(parents=True, exist_ok=True)
     with open(out_json, "w") as f:

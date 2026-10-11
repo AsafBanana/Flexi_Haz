@@ -15,13 +15,14 @@ experiments/
 
 `gamma in {0, 0.5}` (proportional / time-varying X effect) times
 `rho in {0, 0.5, 0.75}` (R^2 of Z given X), 30% censoring, 200 replications,
-`n = 4000` in the report (1000, 2000 for the n-sweep). FLEXI-Haz: 4 warm-started
-learning-rate phases, theta learning rate x20, exact theta refinement at each
-phase boundary, 5 restarts selected by the efficient score, cross-fitted
-residual SE. Zhong: 3 learning-rate phases, 5 restarts selected by validation
-loss, profile-likelihood refinement, additive residual-net SE. Architectures
-from a 35-point grid (and Zhong's 7 learning rates) on an independent tuning
-dataset; the selections are in `setting1/configs/`.
+`n = 8000` and `n = 4000`. FLEXI-Haz: warm-started learning-rate phases (three
+at n = 8000; four with a x20 theta learning rate at n = 4000), exact theta
+refinement after each phase, 5 restarts selected by the efficient score,
+cross-fitted residual SE. Zhong: 3 learning-rate phases, 5 restarts selected
+by validation loss, profile-likelihood refinement, additive residual-net SE.
+Main and projection architectures from 35-point grids (Zhong: x 7 learning
+rates) on an independent tuning dataset; the n = 4000 selections are in
+`setting1/configs/`.
 See [`setting1/setting1_README.md`](setting1/setting1_README.md).
 
 ## Setting 2 (`setting2/`)
