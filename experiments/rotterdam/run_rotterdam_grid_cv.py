@@ -11,11 +11,13 @@ flexihaz.FlexiHazardModel:
   results/folds_seed<seed>.csv), fit on each fold's training rows only; --seed also
   seeds the network initialisation (seed + fold) and the restarts;
 * per fold, an exhaustive grid over depth L in {2,3,4,5,6} x width w in
-  {25,50,100,150,200,300,500} (35 architectures, hidden_layers=(w,)*L) at a FIXED
-  learning rate (default 1e-3), weight decay 0, dropout 0 -- no learning-rate or
-  weight-decay search.  Each candidate is trained once on the fold's training rows
-  with the estimator's own 67%/33% subject split for early stopping and scored by
-  its validation loss; the argmin is selected;
+  {25,50,100,150,200,300,500} (35 architectures, hidden_layers=(w,)*L), weight
+  decay 0, dropout 0.  FLEXI-Haz: learning rate FIXED at 1e-3 (architecture only).
+  Zhong: the same architectures x the learning-rate grid
+  {1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2} (245 fits per fold), as Zhong et al.
+  tune both.  --learning-rates overrides either.  Each candidate is trained once on
+  the fold's training rows with the estimator's own 67%/33% subject split for early
+  stopping and scored by its validation loss; the argmin is selected;
 * the selected architecture is refitted with --n-restarts (default 5) random
   restarts, keeping the restart with the lowest validation loss (or the smallest
   efficient score with --restart-selection efficient_score); theta, its SE (residual
@@ -53,6 +55,7 @@ from rotterdam_io import DEFAULT_DATA_PATH, DEFAULT_RESULTS_DIR, ensure_dir, loa
 
 DEFAULT_LAYERS = [2, 3, 4, 5, 6]
 DEFAULT_WIDTHS = [25, 50, 100, 150, 200, 300, 500]
+DEFAULT_LEARNING_RATES = {"flexihaz": [1e-3], "zhong": [1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2]}
 
 
 def import_flexihaz_model():
@@ -78,7 +81,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--end-fold", type=int, default=5)
     p.add_argument("--layers", type=str, default=",".join(map(str, DEFAULT_LAYERS)), help="comma-separated depths")
     p.add_argument("--widths", type=str, default=",".join(map(str, DEFAULT_WIDTHS)), help="comma-separated widths")
-    p.add_argument("--learning-rate", type=float, default=1e-3, help="fixed learning rate (not tuned)")
+    p.add_argument("--learning-rates", type=str, default=None,
+                   help="comma-separated learning-rate grid; default 1e-3 (fixed) for flexihaz, "
+                        "1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2 for zhong")
     p.add_argument("--batch-size", type=int, default=100000)
     p.add_argument("--max-epochs", type=int, default=None, help="None -> model default (500 flexihaz / 5000 zhong)")
     p.add_argument("--patience", type=int, default=None, help="None -> model default (30 flexihaz / 35 zhong)")
@@ -117,14 +122,14 @@ def output_name(args: argparse.Namespace) -> str:
     return name
 
 
-def model_kwargs(args: argparse.Namespace, hidden_layers, *, final: bool, seed: int, tau: float | None) -> dict:
+def model_kwargs(args: argparse.Namespace, hidden_layers, learning_rate, *, final: bool, seed: int, tau: float | None) -> dict:
     kw = dict(
         model_type=args.model_type,
         hidden_layers=tuple(hidden_layers),
         activation="relu",
         dropout=0.0,
         weight_decay=0.0,
-        learning_rate=args.learning_rate,
+        learning_rate=float(learning_rate),
         batch_size=args.batch_size,
         grid_size="n",
         include_observed_times=True,
@@ -169,15 +174,17 @@ def main() -> None:
     args = parse_args()
     layers = [int(v) for v in args.layers.split(",") if v.strip()]
     widths = [int(v) for v in args.widths.split(",") if v.strip()]
+    lrs = ([float(v) for v in args.learning_rates.split(",") if v.strip()] if args.learning_rates
+           else list(DEFAULT_LEARNING_RATES[args.model_type]))
     if args.smoke_test:
-        layers, widths = layers[:1], widths[:2]
+        layers, widths, lrs = layers[:1], widths[:2], lrs[:2]
         args.max_epochs = args.max_epochs or 5
         args.tuning_max_epochs = 3
         args.projection_max_epochs = 3
         args.n_restarts = min(args.n_restarts, 2)
         args.end_fold = min(args.end_fold, args.start_fold + 1)
         args.results_dir = str(Path(args.results_dir) / "smoke_test")
-    grid = [(w,) * L for L in layers for w in widths]
+    grid = [((w,) * L, lr) for L in layers for w in widths for lr in lrs]
 
     FlexiHazardModel = import_flexihaz_model()
     data = load_arrays_and_folds(data_path=args.data_path, results_dir=args.results_dir, design=args.design, seed=args.seed)
@@ -186,8 +193,8 @@ def main() -> None:
     tau = float(np.max(T)) if args.tau is None else float(args.tau)
 
     out_dir = ensure_dir(Path(args.results_dir) / output_name(args) / f"{args.design}_seed{args.seed}")
-    print(f"model_type={args.model_type} design={args.design} grid={len(grid)} archs "
-          f"(L={layers}, w={widths}) lr={args.learning_rate} theta_lr_mult={args.theta_lr_mult} "
+    print(f"model_type={args.model_type} design={args.design} grid={len(grid)} configs "
+          f"(L={layers}, w={widths}, lr={lrs}) theta_lr_mult={args.theta_lr_mult} "
           f"restarts={args.n_restarts} three_phase_lr={not (args.zhong_plain or args.no_three_phase_lr)} "
           f"refine_theta={not (args.zhong_plain or args.no_refine_theta)} -> {out_dir}", flush=True)
 
@@ -203,24 +210,26 @@ def main() -> None:
 
         # ---- exhaustive architecture grid at fixed lr (inner 67/33 split for early stopping)
         grid_rows = []
-        for i, hl in enumerate(grid):
+        for i, (hl, lr) in enumerate(grid):
             t1 = time.perf_counter()
-            m = FlexiHazardModel(**model_kwargs(args, hl, final=False, seed=fold_seed, tau=tau))
+            m = FlexiHazardModel(**model_kwargs(args, hl, lr, final=False, seed=fold_seed, tau=tau))
             m.fit(Tf, df, Xf, Z=Zf)
             vl = best_val_loss(m)
-            grid_rows.append(dict(fold=fold_id, arch_idx=i, depth=len(hl), width=hl[0], hidden_layers=str(list(hl)),
-                                  val_loss=vl, epochs_run=int(np.size(m.train_history["val_loss"])) if isinstance(m.train_history, dict) else None,
+            grid_rows.append(dict(fold=fold_id, config_idx=i, depth=len(hl), width=hl[0], hidden_layers=str(list(hl)),
+                                  learning_rate=lr, val_loss=vl,
+                                  epochs_run=int(np.size(m.train_history["val_loss"])) if isinstance(m.train_history, dict) else None,
                                   fit_time_sec=round(time.perf_counter() - t1, 1)))
-            print(f"fold {fold_id} [{i + 1}/{len(grid)}] {hl}: val_loss={vl:.6f} ({grid_rows[-1]['fit_time_sec']}s)", flush=True)
+            print(f"fold {fold_id} [{i + 1}/{len(grid)}] {hl} lr={lr:g}: val_loss={vl:.6f} ({grid_rows[-1]['fit_time_sec']}s)", flush=True)
         grid_df = pd.DataFrame(grid_rows)
         grid_df.to_csv(out_dir / f"fold_{fold_id:02d}_grid.csv", index=False)
         best = grid_df.loc[grid_df.val_loss.idxmin()]
         selected = tuple(int(v) for v in json.loads(best.hidden_layers))
-        print(f"fold {fold_id}: selected {selected} (val_loss={best.val_loss:.6f})", flush=True)
+        selected_lr = float(best.learning_rate)
+        print(f"fold {fold_id}: selected {selected} lr={selected_lr:g} (val_loss={best.val_loss:.6f})", flush=True)
 
         # ---- final fit: restarts + theta inference
         t2 = time.perf_counter()
-        model = FlexiHazardModel(**model_kwargs(args, selected, final=True, seed=fold_seed, tau=tau))
+        model = FlexiHazardModel(**model_kwargs(args, selected, selected_lr, final=True, seed=fold_seed, tau=tau))
         model.fit(Tf, df, Xf, Z=Zf)
         theta = np.asarray(model.theta_hat_original_scale, dtype=np.float64).reshape(-1)
         se = np.sqrt(np.maximum(np.diag(np.asarray(model.var_theta_hat, dtype=np.float64)), 0.0))
@@ -236,11 +245,12 @@ def main() -> None:
         save_json(log_path, dict(
             status="success", model_type=args.model_type, design=args.design, fold=fold_id,
             n_train=int(tr.size), n_events_train=int(df.sum()), selected_hidden_layers=list(selected),
-            selected_val_loss=float(best.val_loss), learning_rate=args.learning_rate, theta_lr_multiplier=args.theta_lr_mult,
+            selected_val_loss=float(best.val_loss), selected_learning_rate=selected_lr, learning_rate_grid=lrs,
+            theta_lr_multiplier=args.theta_lr_mult,
             three_phase_lr=bool(model.three_phase_lr), refine_theta=bool(model.refine_theta),
             n_restarts=args.n_restarts, restart_selection=args.restart_selection,
             selected_restart=getattr(model, "selected_restart_", 0), restarts=restarts,
-            grid_layers=layers, grid_widths=widths, n_grid=len(grid),
+            grid_layers=layers, grid_widths=widths, grid_learning_rates=lrs, n_grid=len(grid),
             tuning_time_sec=round(t2 - t0, 1), final_fit_time_sec=round(time.perf_counter() - t2, 1),
             z_columns=z_cols, theta=theta.tolist(), se=se.tolist(),
         ))
@@ -260,8 +270,9 @@ def main() -> None:
         summ["mean_hazard_ratio"] = np.exp(summ.mean_estimate)
         summ["significant_95"] = (summ.mean_ci95_upper < 0) | (summ.mean_ci95_lower > 0)
         summ.to_csv(out_dir / "summary_treatment_effects.csv", index=False)
-        archs = [json.load(open(p)).get("selected_hidden_layers") for p in sorted(out_dir.glob("fold_*_log.json"))]
-        print("\nselected architectures by fold:", archs)
+        sel = [(json.load(open(p)).get("selected_hidden_layers"), json.load(open(p)).get("selected_learning_rate"))
+               for p in sorted(out_dir.glob("fold_*_log.json"))]
+        print("\nselected (architecture, learning rate) by fold:", sel)
         print(summ.round(4).to_string(index=False))
 
 

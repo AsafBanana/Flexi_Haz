@@ -92,12 +92,14 @@ Two training options matter for the comparison:
    model is fitted on the other four folds' rows only. Our runs used seed
    **20260303** for FLEXI-Haz and **20260707** for Zhong; the comparison
    table in the report pairs those two runs.
-2. **Architecture grid, per fold.** Depth `L in {2, 3, 4, 5, 6}` times
-   width `w in {25, 50, 100, 150, 200, 300, 500}`: 35 architectures
-   `hidden_layers = (w,) * L`. Each is trained once at the fixed learning
-   rate (default `1e-3`) and scored by its validation loss on the internal
-   67/33 split; the architecture with the smallest loss is selected. No
-   learning-rate, weight-decay or dropout search.
+2. **Grid, per fold.** Depth `L in {2, 3, 4, 5, 6}` times width
+   `w in {25, 50, 100, 150, 200, 300, 500}`: 35 architectures
+   `hidden_layers = (w,) * L`, weight decay 0, dropout 0. FLEXI-Haz searches
+   the architecture only, at the fixed learning rate `1e-3`. Zhong searches
+   architecture x learning rate over `{1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2}`
+   (245 fits per fold), since Zhong et al. tune both. Each candidate is
+   trained once and scored by its validation loss on the internal 67/33
+   split; the smallest loss wins. `--learning-rates` overrides the grid.
 3. **Final fit.** The selected architecture is refitted with `K`
    restarts; the lowest-validation-loss restart is kept.
 4. **Inference.** `theta`, its standard error, 90% and 95% normal
@@ -125,7 +127,7 @@ python run_rotterdam_grid_cv.py --model-type zhong --design standard       --zho
 ```
 
 Useful options: `--start-fold/--end-fold` to split folds across
-machines, `--layers`/`--widths` to change the grid, `--learning-rate`,
+machines, `--layers`/`--widths`/`--learning-rates` to change the grid,
 `--n-restarts`, `--restart-selection {val_loss,efficient_score}`,
 `--skip-completed` to resume, `--smoke-test` for a 1-minute check.
 `python run_rotterdam_grid_cv.py --help` lists everything.
@@ -135,9 +137,9 @@ machines, `--layers`/`--widths` to change the grid, `--learning-rate`,
 `results/<model_type>_gridcv[_thetalr<M>][_plain]/<design>_seed<seed>/`:
 
 ``` text
-fold_XX_grid.csv               validation loss, epochs and time of all 35 architectures
+fold_XX_grid.csv               validation loss, epochs and time of every (architecture, lr) candidate
 fold_XX_treatment_effects.csv  theta, se, ci90, ci95, hazard ratio of the selected architecture
-fold_XX_log.json               selected architecture, restarts (seed, val loss, theta), timings
+fold_XX_log.json               selected architecture and learning rate, restarts (seed, val loss, theta), timings
 summary_treatment_effects.csv  across-fold mean estimate, sd, mean se, mean CIs, significance
 ```
 
