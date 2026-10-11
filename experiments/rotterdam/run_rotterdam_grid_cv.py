@@ -7,8 +7,9 @@ flexihaz.FlexiHazardModel:
 * design "standard" (Z = chemo, hormon) or "er_interaction" (Z = hormon/chemo x
   low/high ER, threshold 61); X = age, nodes, pgr, er, meno, grade + one-hot tumour
   size (rotterdam_io.make_design_dataframe); X and Z standardized inside the model;
-* the outer folds of results/folds.csv (5-fold, seed 221100), fit on each fold's
-  training rows only;
+* five outer folds (KFold, shuffled, random_state=--seed, stored as
+  results/folds_seed<seed>.csv), fit on each fold's training rows only; --seed also
+  seeds the network initialisation (seed + fold) and the restarts;
 * per fold, an exhaustive grid over depth L in {2,3,4,5,6} x width w in
   {25,50,100,150,200,300,500} (35 architectures, hidden_layers=(w,)*L) at a FIXED
   learning rate (default 1e-3), weight decay 0, dropout 0 -- no learning-rate or
@@ -22,7 +23,7 @@ flexihaz.FlexiHazardModel:
   Zhong), 90% and 95% CIs are recorded per fold;
 * across folds: mean estimate, SD of the fold estimates, mean SE, mean CI bounds.
 
-Outputs under results/<model_type>_gridcv[_thetalr<M>][_plain]/<design>/:
+Outputs under results/<model_type>_gridcv[_thetalr<M>][_plain]/<design>_seed<seed>/:
     fold_XX_grid.csv               validation loss of every architecture
     fold_XX_treatment_effects.csv  theta, se, CIs for the selected architecture
     fold_XX_log.json               selected architecture, restarts, timings
@@ -30,8 +31,8 @@ Outputs under results/<model_type>_gridcv[_thetalr<M>][_plain]/<design>/:
 
 Examples
 --------
-    python run_rotterdam_grid_cv.py --model-type flexihaz --design er_interaction --theta-lr-mult 20
-    python run_rotterdam_grid_cv.py --model-type zhong --design er_interaction --zhong-plain
+    python run_rotterdam_grid_cv.py --model-type flexihaz --design er_interaction --theta-lr-mult 20 --seed 20260303
+    python run_rotterdam_grid_cv.py --model-type zhong --design er_interaction --zhong-plain --seed 20260707
     python run_rotterdam_grid_cv.py --model-type flexihaz --design standard --start-fold 2 --end-fold 3
 """
 
@@ -93,7 +94,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--projection-patience", type=int, default=30)
     p.add_argument("--projection-n-splits", type=int, default=5)
     p.add_argument("--tau", type=float, default=None)
-    p.add_argument("--seed", type=int, default=221100)
+    p.add_argument("--seed", type=int, default=221100,
+                   help="seeds the outer folds (results/folds_seed<seed>.csv), the network init and the restarts; "
+                        "our runs used 20260303 for flexihaz and 20260707 for zhong")
     p.add_argument("--device", default="auto")
     p.add_argument("--output-tag", type=str, default=None, help="override the output folder name")
     p.add_argument("--skip-completed", action="store_true")
@@ -182,7 +185,7 @@ def main() -> None:
     z_cols = data["metadata"]["z_columns"]
     tau = float(np.max(T)) if args.tau is None else float(args.tau)
 
-    out_dir = ensure_dir(Path(args.results_dir) / output_name(args) / args.design)
+    out_dir = ensure_dir(Path(args.results_dir) / output_name(args) / f"{args.design}_seed{args.seed}")
     print(f"model_type={args.model_type} design={args.design} grid={len(grid)} archs "
           f"(L={layers}, w={widths}) lr={args.learning_rate} theta_lr_mult={args.theta_lr_mult} "
           f"restarts={args.n_restarts} three_phase_lr={not (args.zhong_plain or args.no_three_phase_lr)} "

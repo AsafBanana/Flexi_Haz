@@ -5,7 +5,7 @@
   (design "standard"), or their low/high-ER interactions (design "er_interaction");
 - flexible covariates (X): age, nodes, progesterone receptor, estrogen receptor,
   menopausal status, tumor grade, and one-hot encoded tumor size;
-- deterministic outer 5-fold split shared by all models (results/folds.csv).
+- deterministic outer 5-fold split per seed (results/folds_seed<seed>.csv).
 """
 
 from __future__ import annotations
@@ -193,9 +193,9 @@ def make_outer_folds(
     results_dir: str | Path = DEFAULT_RESULTS_DIR,
     overwrite: bool = False,
 ) -> pd.DataFrame:
-    """Create or load deterministic outer 5-fold definitions."""
+    """Create or load deterministic outer 5-fold definitions (one file per seed)."""
     results_dir = ensure_dir(results_dir)
-    folds_path = results_dir / "folds.csv"
+    folds_path = results_dir / f"folds_seed{int(seed)}.csv"
     if folds_path.exists() and not overwrite:
         folds = pd.read_csv(folds_path)
         if folds.shape[0] == n_samples:
