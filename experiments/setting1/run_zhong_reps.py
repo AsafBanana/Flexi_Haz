@@ -120,19 +120,19 @@ def fit_one_trial(hidden_layers, lr_phases, init_seed, X_scaled, Z_scaled, T, de
         model.load_state_dict(best_state)
         final_val_loss = best_val
 
-    # ---- exact profile-likelihood refinement of theta, holding g fixed
-    # (TRAIN-SPLIT SUBJECTS ONLY -- val split is used solely for early
-    # stopping above and must never enter the point estimate or its SE,
-    # which is itself computed on train_event_idx only) ----
-    model.eval()
-    with torch.no_grad():
-        g_fixed_full = model.g_net(X_t).squeeze(-1).cpu().numpy().astype(np.float64)
-    g_fixed_tr = g_fixed_full[train_idx]
-    Z_tr = Z_scaled.reshape(-1)[train_idx]
-    T_tr = T[train_idx]
-    delta_tr = delta[train_idx]
-    theta_joint_scaled = model.theta()[0]
-    theta_refined_scaled = refine_theta_zhong(g_fixed_tr, Z_tr, T_tr, delta_tr, theta_joint_scaled)
+        # ---- exact profile-likelihood refinement of theta at the phase boundary, holding g
+        # fixed (TRAIN-SPLIT SUBJECTS ONLY -- the val split is used solely for early stopping
+        # and must never enter the point estimate or its SE); the next phase starts from the
+        # refined coefficient ----
+        model.eval()
+        with torch.no_grad():
+            g_fixed_tr = model.g_net(X_t[tr_idx_t]).squeeze(-1).cpu().numpy().astype(np.float64)
+        theta_joint_scaled = float(model.theta()[0])  # jointly trained coefficient of this phase
+        theta_refined_scaled = refine_theta_zhong(g_fixed_tr, Z_scaled.reshape(-1)[train_idx], T[train_idx],
+                                                  delta[train_idx], theta_joint_scaled)
+        with torch.no_grad():
+            model.beta.weight.fill_(float(theta_refined_scaled))
+        best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
 
     return theta_joint_scaled, theta_refined_scaled, float(final_val_loss)
 

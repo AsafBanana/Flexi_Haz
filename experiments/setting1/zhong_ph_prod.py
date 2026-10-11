@@ -67,8 +67,8 @@ from dgm_additional import DGMConfig, calibrate_censoring_c, simulate_dataset  #
 
 BASE_SEED = 221100
 INIT_SEED = 910_000
-MAX_EPOCHS = 5000
-PATIENCE = 35
+MAX_EPOCHS = 500
+PATIENCE = 30
 VAL_FRACTION = 0.33
 
 PROJ_ARCH = dict(hidden_layers=(64, 64), activation="relu", dropout=0.0)

@@ -11,13 +11,13 @@ per setting, at `n = 8000` and `n = 4000`. The target is the scalar coefficient
 
 ``` text
 dgm_additional.py        data-generating mechanism and censoring calibration
-common.py                shared constants (seeds, lr phases) and FLEXI-Haz's exact theta refinement
+common.py                shared constants (seeds, the lr phases) and FLEXI-Haz's exact theta refinement
 crossfit_residuals.py    cross-fitted Z - E[Z | X, t] residuals (FLEXI-Haz score and SE)
 tune_flexihaz_grid.py    FLEXI-Haz main-net and projection-net grids (35 archs each, fixed lr) on the tuning dataset
 run_flexihaz_reps.py     FLEXI-Haz replications: warm-started lr phases, 5 restarts, efficient-score selection
 zhong_ph_prod.py         Zhong model pieces: CoxPHDNN, Breslow loss, additive residual net, profile-likelihood refinement
 tune_zhong_grid.py       Zhong architecture x learning-rate grid (35 x 7) on the tuning dataset
-run_zhong_reps.py        Zhong replications: 3 lr phases, 5 restarts, val-loss selection, refinement
+run_zhong_reps.py        Zhong replications: 3 lr phases with refinement at each boundary, 5 restarts, val-loss selection
 aggregate_setting1.py    one table: theta, bias, empirical SD, model SE, 90/95% coverage
 ```
 
@@ -58,12 +58,11 @@ piecewise-exponential likelihood on the expanded data (grid of all observed
 times), ReLU net, weight decay 0, dropout 0, standardized inputs, Cox (X+Z)
 warm start of `theta`, validation fraction 0.33 by subject.
 
-- warm-started learning-rate phases, at most 500 epochs each, patience 30 on
-  the validation NLL, best validation loss carried across phases:
-  `n = 8000`: three phases `1e-3 -> 1e-4 -> 1e-5`, `theta` trained at the
-  network rate; `n = 4000`: four phases `1e-3 -> 1e-4 -> 1e-5 -> 1e-6` with the
-  **theta learning rate x20** the phase rate (`--theta-lr-mult 20`), so that the
-  linear branch is not frozen by the small network rate on the smaller sample;
+- three warm-started learning-rate phases `1e-3 -> 1e-4 -> 1e-5`, at most 500
+  epochs each, patience 30 on the validation NLL, best validation loss carried
+  across phases with the best weights restored. At `n = 4000` the linear
+  coefficient has its own Adam parameter group with **20 times** the current
+  network rate (`--theta-lr-mult 20`); at `n = 8000` the two rates are equal;
 - after each phase `theta` is re-solved exactly (L-BFGS on the training rows with
   `g` fixed, `common.refine_theta`);
 - main-net minibatch ceil(#expanded training rows / 213)
@@ -79,14 +78,16 @@ warm start of `theta`, validation fraction 0.33 by subject.
   subjects for early stopping, at most 300 epochs, patience 30.
 
 **Zhong et al. (2022)** (`run_zhong_reps.py`): `h(t | X, Z) = h_0(t) exp{theta Z + g(X)}`,
-Breslow partial likelihood, full batch, at most 5000 epochs, patience 35,
-standardized inputs, Cox (X+Z) warm start.
+Breslow partial likelihood, full batch (one step per epoch), at most 500 epochs
+per phase, patience 30, best validation weights restored, standardized inputs,
+Cox (X+Z) warm start.
 
 - learning-rate phases `lr -> lr/10 -> lr/100` with the tuned `lr`;
+- at each phase boundary `theta` is refined by maximising the Breslow profile
+  likelihood with `g` fixed (training subjects); the next phase starts from the
+  refined coefficient (`theta_hat_refined`; the jointly trained coefficient of
+  the last phase is kept as `theta_hat_unrefined`);
 - 5 random restarts; the one with the lowest validation partial likelihood is kept;
-- `theta` is refined by maximising the Breslow profile likelihood with `g` fixed
-  (`theta_hat_refined`; the jointly trained coefficient is kept as
-  `theta_hat_unrefined`);
 - SE from 5-fold cross-fitted residuals of the **additive** residual network
   `g_X(X) + g_T(t)` (no X-t interaction), `Var(theta) = (R'R)^-1` over event
   subjects, as in the paper.
@@ -98,9 +99,7 @@ One independent tuning dataset per setting and sample size (seed 500000, size
 
 - FLEXI-Haz main net: depth `{2,3,4,5,6}` x width `{25,50,100,150,200,300,500}`
   (35 architectures) with the 3-phase schedule, learning rate not searched,
-  scored by validation NLL. The landscape is flat, so the rule is: among
-  configurations within 1% of the minimum, the one with the fewest layers
-  (`--prefer-fewer-layers`).
+  scored by the best validation NLL; the argmin is selected.
 - FLEXI-Haz projection net: its own search over the same 35 architectures,
   scored by validation MSE of the regression of Z on (X, t) at the training
   subjects' event times. It does not reuse the main-net architecture.
@@ -124,8 +123,8 @@ per setting, `gamma in {0.0, 0.5} x rho in {0.0, 0.5, 0.75}` (shown for
 
 ``` bash
 # tuning, per setting and sample size (k = 3 and 30% censoring are the defaults)
-python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 8000 --prefer-fewer-layers
-python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 4000 --prefer-fewer-layers
+python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 8000
+python tune_flexihaz_grid.py --gamma 0.5 --rho 0.5 --n 4000
 python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --n 8000
 python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --n 4000
 
@@ -134,10 +133,9 @@ python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --n 8000 --n-reps 200 --n-init
     --main-batches-per-epoch 213 --proj-batches-per-epoch 8 \
     --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
 
-# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20
+# n = 4000: same three lr phases, theta learning rate x20
 python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --n 4000 --n-reps 200 --n-init 5 \
-    --theta-lr-mult 20 --lr-phases 1e-3,1e-4,1e-5,1e-6 \
-    --main-batches-per-epoch 213 --proj-batches-per-epoch 8 \
+    --theta-lr-mult 20 --main-batches-per-epoch 213 --proj-batches-per-epoch 8 \
     --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n4000.json
 
 # Zhong, both sample sizes (same recipe)

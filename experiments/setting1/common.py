@@ -22,7 +22,7 @@ HERE = Path(__file__).resolve().parent
 BASE_SEED = 221100          # replication r uses data seed BASE_SEED + r
 TUNING_SEED = 500_000       # independent tuning dataset
 THETA_TRUE = float(np.log(1.5))
-LR_PHASES = [1e-3, 1e-4, 1e-5]   # tuning schedule; production adds a 1e-6 phase (--lr-phases)
+LR_PHASES = [1e-3, 1e-4, 1e-5]   # warm-started Adam phases, both sample sizes
 PROJECTION_LR = 1e-3
 
 

@@ -50,8 +50,8 @@ from zhong_ph_prod import CoxPHDNN, breslow_loss, INIT_SEED  # noqa: E402
 
 TUNING_SEED = 500_000  # same tuning dataset seed convention as tune_hyperparams.py
 VAL_FRACTION = 0.33
-MAX_EPOCHS = 5000
-PATIENCE = 35
+MAX_EPOCHS = 500
+PATIENCE = 30
 
 LAYERS = [2, 3, 4, 5, 6]  # matches tune_hyperparams_zhonggrid.py's (FlexiHaz's own) restricted grid
 NEURONS = [25, 50, 100, 150, 200, 300, 500]
