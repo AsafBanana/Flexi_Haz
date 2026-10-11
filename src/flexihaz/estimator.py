@@ -257,12 +257,12 @@ class FlexiHazardModel:
         if self.n_restarts == 1:
             self._build_net(X_scaled, Z_scaled)
             if self.has_linear_:
-                self._initialize_theta_from_cox(T, delta, Z, Z_scaled)
+                self._initialize_theta_from_cox(T, delta, X, Z, Z_scaled)
             self._train_current_net(expanded, train_idx, val_idx)
             self.restart_results_ = None
             self.selected_restart_ = 0
         else:
-            self._fit_restarts(expanded, train_idx, val_idx, T, delta, X_scaled, Z, Z_scaled)
+            self._fit_restarts(expanded, train_idx, val_idx, T, delta, X, X_scaled, Z, Z_scaled)
 
         self.theta_hat = None if not self.has_linear_ else self.net_.theta()
         if self.theta_hat is not None and self.z_scaler_ is not None:
@@ -352,7 +352,7 @@ class FlexiHazardModel:
         if self.has_linear_ and self.refine_theta and not self.three_phase_lr:
             self._refine_theta(expanded)
 
-    def _fit_restarts(self, expanded, train_idx, val_idx, T, delta, X_scaled, Z, Z_scaled):
+    def _fit_restarts(self, expanded, train_idx, val_idx, T, delta, X, X_scaled, Z, Z_scaled):
         """Train n_restarts networks on the same split; keep the one picked by restart_selection."""
         val_data = self._tensors_from_expanded(expanded, val_idx)
         results, states, histories = [], [], []
@@ -364,7 +364,7 @@ class FlexiHazardModel:
             self._build_net(X_scaled, Z_scaled)
             if self.has_linear_:
                 if k == 0:
-                    self._initialize_theta_from_cox(T, delta, Z, Z_scaled)
+                    self._initialize_theta_from_cox(T, delta, X, Z, Z_scaled)
                 else:
                     with torch.no_grad():
                         self.net_.linear.weight.copy_(
@@ -492,8 +492,14 @@ class FlexiHazardModel:
         t_arr = np.asarray(t, dtype=np.float32).reshape(-1, 1)
         return t_arr / float(self.time_scale_)
     
-    def _initialize_theta_from_cox(self, T, delta, Z_original, Z_scaled):
-        """Initialize the linear coefficient theta from a standard Cox PH fit.
+    def _initialize_theta_from_cox(self, T, delta, X_original, Z_original, Z_scaled):
+        """Initialize the linear coefficient theta from a Cox PH fit on (X, Z).
+
+        The Cox model is fitted jointly on the flexible covariates X and the
+        linear covariates Z (X entering linearly), and the Z coefficients are
+        used as the warm start. Fitting on Z alone would let theta absorb the
+        part of X's effect that leaks through the X-Z correlation. Pass
+        X_original=None to fit on Z only.
 
         The neural network is trained on standardized Z when standardize=True.
         Therefore, the value copied into self.net_.linear.weight must be on the
@@ -534,7 +540,11 @@ class FlexiHazardModel:
             else:
                 try:
                     z_cols = [f"Z{j}" for j in range(self.z_dim_)]
-                    df = pd.DataFrame(Z_original, columns=z_cols)
+                    df = pd.DataFrame(np.asarray(Z_original, dtype=np.float64).reshape(len(T), -1), columns=z_cols)
+                    if X_original is not None:
+                        X_arr = np.asarray(X_original, dtype=np.float64).reshape(len(T), -1)
+                        for j in range(X_arr.shape[1]):
+                            df[f"X{j}"] = X_arr[:, j]
                     df["T"] = np.asarray(T, dtype=np.float64)
                     df["delta"] = np.asarray(delta, dtype=int)
 
@@ -599,12 +609,15 @@ class FlexiHazardModel:
                     f"with learning_rate={lr:g}"
                 )
 
-            self._fit_expanded(
+            # the best validation loss is carried into the next phase, so a lower-LR
+            # phase only replaces the weights when it beats the whole run's best so far
+            global_best_val = self._fit_expanded(
                 expanded,
                 train_idx,
                 val_idx,
                 learning_rate=lr,
                 epoch_offset=epoch_offset,
+                init_best_val=None if phase_idx == 0 else global_best_val,
             )
 
             phase_train_losses = list(self.train_history["train_loss"])
@@ -612,13 +625,8 @@ class FlexiHazardModel:
             phase_best_epoch = int(self.train_history["best_epoch"])
             phase_epochs_run = len(phase_train_losses)
 
-            if phase_val_losses:
-                phase_local_best_idx = int(np.argmin(phase_val_losses))
-                phase_local_best_val = float(phase_val_losses[phase_local_best_idx])
-
-                if phase_local_best_val < global_best_val:
-                    global_best_val = phase_local_best_val
-                    global_best_epoch = epoch_offset + phase_local_best_idx
+            if phase_best_epoch >= 0:
+                global_best_epoch = epoch_offset + phase_best_epoch
 
             phase_history = {
                 "phase": phase_idx + 1,
@@ -641,21 +649,25 @@ class FlexiHazardModel:
 
         self.phase_histories_ = phase_histories
 
-        final_best_epoch = (
-            phase_histories[-1]["best_epoch_global"]
-            if phase_histories and phase_histories[-1]["best_epoch_global"] >= 0
-            else -1
-        )
-
+        # the weights in use are those of the best epoch over ALL phases (the best
+        # validation loss is carried across phases), so report that epoch
         self.train_history = {
             "train_loss": all_train_losses,
             "val_loss": all_val_losses,
-            "best_epoch": final_best_epoch,
+            "best_epoch": global_best_epoch,
             "global_best_epoch": global_best_epoch,
             "phases": phase_histories,
         }
 
-    def _fit_expanded(self, expanded, train_idx, val_idx, learning_rate=None, epoch_offset=0):
+    def _fit_expanded(self, expanded, train_idx, val_idx, learning_rate=None, epoch_offset=0, init_best_val=None):
+        """One early-stopped training run; returns the best validation loss reached.
+
+        init_best_val: best validation loss of an earlier phase. Early stopping then
+        only accepts weights that improve on the whole run so far, and if nothing
+        improves the weights at entry (the earlier phase's best) are kept. None
+        resets to +inf (single-phase behaviour). Non-finite validation losses never
+        count as an improvement.
+        """
         net = self.net_
         lr = self.learning_rate if learning_rate is None else float(learning_rate)
 
@@ -669,9 +681,10 @@ class FlexiHazardModel:
         batch_size = self.batch_size if self.model_type == "flexihaz" else len(train_idx)
 
         best_state = copy.deepcopy(net.state_dict())
-        best_val = float("inf")
+        best_val = float("inf") if init_best_val is None else float(init_best_val)
         best_epoch = -1
         wait = 0
+        n_nonfinite = 0
         train_losses, val_losses = [], []
         for epoch in range(self.max_epochs):
             net.train()
@@ -711,8 +724,10 @@ class FlexiHazardModel:
                 if should_stop:
                     break
 
-            if val_loss < best_val - 1e-8:
-                best_val = val_loss
+            if not np.isfinite(val_loss):
+                n_nonfinite += 1
+            if np.isfinite(val_loss) and val_loss < best_val - 1e-8:
+                best_val = float(val_loss)
                 best_state = copy.deepcopy(net.state_dict())
                 best_epoch = epoch
                 wait = 0
@@ -720,6 +735,11 @@ class FlexiHazardModel:
                 wait += 1
                 if wait >= self.patience:
                     break
+        if n_nonfinite:
+            warnings.warn(
+                f"{n_nonfinite} of {len(val_losses)} epochs had a non-finite validation loss; "
+                "those epochs were ignored by early stopping."
+            )
         net.load_state_dict(best_state)
         self.train_history = {
             "train_loss": train_losses,
@@ -727,6 +747,7 @@ class FlexiHazardModel:
             "best_epoch": best_epoch,
             "learning_rate": lr,
         }
+        return best_val
 
     def _make_optimizer(self, lr):
         """Adam over the network; with theta_lr_multiplier != 1 the linear branch gets its own group."""
@@ -761,13 +782,24 @@ class FlexiHazardModel:
     @torch.no_grad()
     def _validation_loss(self, data):
         self.net_.eval()
-        if self.has_linear_:
-            eta, _ = self.net_(data["t"], data["X"], data["Z"])
-        else:
-            eta, _ = self.net_(data["t"], data["X"], None)
         if self.model_type == "zhong":
+            # the partial likelihood needs the whole risk set: one full pass over the (subject-level) rows
+            if self.has_linear_:
+                eta, _ = self.net_(data["t"], data["X"], data["Z"])
+            else:
+                eta, _ = self.net_(data["t"], data["X"], None)
             return float(cox_partial_likelihood_loss(eta, data["t"], data["event"]).detach().cpu())
-        return float(negative_log_likelihood(eta, data["event"], data["length"]).detach().cpu())
+        # mean NLL accumulated in minibatches: identical value to a single pass, but bounded GPU memory
+        # (a single pass over all expanded validation rows can need several GB of activations)
+        n = data["t"].shape[0]
+        total = 0.0
+        for batch in self._iter_batches(data, self.batch_size, shuffle=False):
+            if self.has_linear_:
+                eta, _ = self.net_(batch["t"], batch["X"], batch["Z"])
+            else:
+                eta, _ = self.net_(batch["t"], batch["X"], None)
+            total += float(negative_log_likelihood(eta, batch["event"], batch["length"], reduction="sum").detach().cpu())
+        return total / n
 
     @torch.no_grad()
     def _predict_g_on_pairs(self, X_pairs, t_pairs, batch_size=None):

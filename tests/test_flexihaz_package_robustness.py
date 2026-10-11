@@ -987,3 +987,91 @@ def test_epoch_defaults_depend_on_model_type():
 def test_invalid_model_type_raises():
     with pytest.raises(InputValidationError):
         FlexiHazardModel(**tiny_model_kwargs(model_type="cox"))
+
+
+# -----------------------------------------------------------------------------
+# Best validation loss carried across learning-rate phases; non-finite guard
+# -----------------------------------------------------------------------------
+
+
+def _state_equal(a, b):
+    return all(torch.equal(a[k], b[k]) for k in a)
+
+
+def test_fit_expanded_keeps_entry_weights_when_init_best_val_is_unbeatable():
+    T, delta, X, Z = small_survival_data(n=24, linear=True)
+    model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=3, patience=5))
+    model.fit(T, delta, X, Z=Z)
+
+    expanded = make_expanded_data(T, delta, model.x_scaler_.transform(X), model.z_scaler_.transform(Z), model.time_grid)
+    train_idx, val_idx = model._train_val_indices(expanded["subject_id"])
+    entry_state = {k: v.clone() for k, v in model.net_.state_dict().items()}
+
+    best = model._fit_expanded(expanded, train_idx, val_idx, learning_rate=1e-3, init_best_val=-1.0)
+
+    assert best == -1.0
+    assert model.train_history["best_epoch"] == -1
+    assert _state_equal(model.net_.state_dict(), entry_state)
+
+
+def test_fit_expanded_returns_best_validation_loss():
+    T, delta, X, Z = small_survival_data(n=24, linear=True)
+    model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=4, patience=10))
+    model.fit(T, delta, X, Z=Z)
+    expanded = make_expanded_data(T, delta, model.x_scaler_.transform(X), model.z_scaler_.transform(Z), model.time_grid)
+    train_idx, val_idx = model._train_val_indices(expanded["subject_id"])
+
+    best = model._fit_expanded(expanded, train_idx, val_idx, learning_rate=1e-3)
+
+    assert math.isfinite(best)
+    assert best == pytest.approx(min(model.train_history["val_loss"]))
+
+
+def test_three_phase_lr_never_ends_worse_than_an_earlier_phase():
+    T, delta, X, Z = small_survival_data(n=30, linear=True, seed=7)
+    model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=True, max_epochs=6, patience=3))
+    model.fit(T, delta, X, Z=Z)
+
+    phases = model.train_history["phases"]
+    assert len(phases) == 3
+    # every phase that recorded an improvement must beat the best of all earlier phases
+    best_so_far = math.inf
+    for ph in phases:
+        if ph["best_epoch"] >= 0:
+            phase_best = min(ph["val_loss"])
+            assert phase_best < best_so_far
+            best_so_far = phase_best
+        else:
+            # no improvement in this phase: nothing in it beats the carried best
+            assert min(ph["val_loss"]) >= best_so_far - 1e-8
+
+
+def test_non_finite_validation_loss_is_ignored_and_warned(monkeypatch):
+    T, delta, X, Z = small_survival_data(n=24, linear=True)
+    model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=3, patience=5))
+    model.fit(T, delta, X, Z=Z)
+    expanded = make_expanded_data(T, delta, model.x_scaler_.transform(X), model.z_scaler_.transform(Z), model.time_grid)
+    train_idx, val_idx = model._train_val_indices(expanded["subject_id"])
+    entry_state = {k: v.clone() for k, v in model.net_.state_dict().items()}
+
+    monkeypatch.setattr(model, "_validation_loss", lambda data: float("nan"))
+    with pytest.warns(UserWarning, match="non-finite validation loss"):
+        best = model._fit_expanded(expanded, train_idx, val_idx, learning_rate=1e-3)
+
+    assert best == math.inf
+    assert model.train_history["best_epoch"] == -1
+    assert _state_equal(model.net_.state_dict(), entry_state)
+
+
+def test_cox_warm_start_uses_x_and_z_jointly():
+    T, delta, X, Z = small_survival_data(n=40, linear=True, seed=3)
+    model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=1, patience=1, theta_init="cox"))
+    model.fit(T, delta, X, Z=Z)
+    joint = model.theta_init_original_scale_.copy()
+
+    # Z-only fit for comparison
+    model._initialize_theta_from_cox(T, delta, None, Z, model.z_scaler_.transform(Z))
+    z_only = model.theta_init_original_scale_.copy()
+
+    assert joint.shape == z_only.shape == (2,)
+    assert not np.allclose(joint, z_only)
