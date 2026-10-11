@@ -15,7 +15,7 @@ common.py                shared constants (seeds, lr phases) and FLEXI-Haz's exa
 crossfit_residuals.py    cross-fitted Z - E[Z | X, t] residuals (FLEXI-Haz score and SE)
 tune_flexihaz_grid.py    FLEXI-Haz main-net and projection-net grids (35 archs each, fixed lr) on the tuning dataset
 run_flexihaz_reps.py     FLEXI-Haz replications: warm-started lr phases, 5 restarts, efficient-score selection
-zhong_ph_prod.py         Zhong model: CoxPHDNN, Breslow loss, additive residual net, profile-likelihood refinement
+zhong_ph_prod.py         Zhong model pieces: CoxPHDNN, Breslow loss, additive residual net, profile-likelihood refinement
 tune_zhong_grid.py       Zhong architecture x learning-rate grid (35 x 7) on the tuning dataset
 run_zhong_reps.py        Zhong replications: 3 lr phases, 5 restarts, val-loss selection, refinement
 aggregate_setting1.py    one table: theta, bias, empirical SD, model SE, 90/95% coverage

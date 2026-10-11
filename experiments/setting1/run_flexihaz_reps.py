@@ -1,24 +1,14 @@
-"""FlexiHaz Method 1 (K=3 multi-init, select by |efficient/orthogonal score|),
-using PROPERLY cross-fitted Z-vs-(X,t) residuals for BOTH the selection score
-and the final SE -- computed ONCE per replication (crossfit_residuals.py),
-since the residualization step doesn't depend on any trained main model.
+"""FLEXI-Haz replications for setting 1.
 
-Order of operations per replication (as specified):
-  1. simulate data, preprocess (X,Z scaled; expanded piecewise-exponential
-     rows; train/val split)
-  2. compute cross-fitted residuals (K=5 fold) ONCE -- these don't depend on
-     theta or g at all, so they're computed before any main-net training
-  3. train K=3 main-net restarts (3-phase warm-start + refine_theta, as before)
-  4. for each restart, compute its selection score using the SAME pre-computed
-     residuals, weighted by that restart's own fitted (theta,g)
-  5. select the restart with |score| closest to zero
-  6. report its theta_hat and the SE, using the SAME pre-computed residuals'
-     variance (not a separately re-cross-fitted set)
-
-Architecture: read from tune_hyperparams_zhonggrid.py's output JSON (Zhong's
-own layers x neurons grid, dropout=0, no learning-rate search -- FlexiHaz
-keeps its fixed 3-phase schedule). Projection net reuses the main net's
-selected architecture (no separate search), matching Zhong's convention.
+Per replication: simulate the data (seed BASE_SEED + rep), standardize on the training
+subjects, build the piecewise-exponential rows, compute the 5-fold cross-fitted residuals
+Z - E[Z | X, t] ONCE (training subjects; they give both the selection score and the SE),
+then train --n-init random restarts of the main net with warm-started learning-rate phases
+(--lr-phases; theta branch at --theta-lr-mult times the phase rate), exact L-BFGS refinement
+of theta on the training rows after every phase, and report the restart whose efficient
+(orthogonalised) score is closest to zero, with SE = (R'R)^-1 from the shared residuals.
+The one-step and root efficient-score corrections and the val-loss-selected restart are
+recorded as diagnostics.
 """
 
 from __future__ import annotations
@@ -53,17 +43,8 @@ BATCH_SIZE = 100_000
 # sees the same number of minibatches per epoch at every n ((n/8000)^2 scaling gives ~213 at 100000)
 MAIN_BATCHES_PER_EPOCH = None
 LR_SCHEDULE = list(LR_PHASES)  # overridable via --lr-phases
-# --zero-output-init: zero the last layer of g_net so every restart starts from the identical
-# function g == 0 (only hidden-layer random features and batch order differ between restarts)
-ZERO_OUTPUT_INIT = False
-# --orthogonalize-z: train the main net with the cross-fitted residual r = Z - E[Z|X,t] in the Z slot
-# (eta = theta*r + g~(t,X), g~ = g + theta*E[Z|X,t]) -- same theta, but g~ can no longer absorb theta*Z
-ORTHOGONALIZE_Z = False
 # --theta-lr-mult: learning-rate multiplier for the theta (linear) branch
 THETA_LR_MULT = 1.0
-# --root-refine: at each LR-phase boundary set theta to the root of the orthogonalized score equation
-# (g fixed, cross-fitted residuals) instead of the likelihood refine, so later phases train g around it
-ROOT_REFINE = False
 
 
 def make_init_seeds(n_init):
@@ -110,12 +91,6 @@ def build_trial_model(hidden_layers, init_seed, X_scaled, Z_scaled, Z_raw, T, de
     model.net_ = net
     model.z_scaler_ = z_scaler
     model.theta_lr_multiplier = THETA_LR_MULT
-    if ZERO_OUTPUT_INIT:
-        last = [m for m in net.g_net.modules() if isinstance(m, torch.nn.Linear)][-1]
-        with torch.no_grad():
-            last.weight.zero_()
-            if last.bias is not None:
-                last.bias.zero_()
     # Cox warm start on TRAIN subjects only (validation subjects must not inform theta at all)
     model._initialize_theta_from_cox(T[train_subj], delta[train_subj], X_raw[train_subj], Z_raw[train_subj],
                                      Z_scaled[train_subj])
@@ -146,14 +121,7 @@ def fit_one_trial(hidden_layers, init_seed, X_scaled, Z_scaled, Z_raw, T, delta,
         model.learning_rate = lr
         carried_best_val = model._fit_expanded(expanded, train_idx, val_idx, init_best_val=carried_best_val)
         model.theta_unrefined_ = model.net_.theta().copy()
-        if ROOT_REFINE and resid_all is not None:
-            rows_tr = score_rows(model, expanded, train_idx)
-            _, theta_root, _ = solve_efficient_score(rows_tr, float(model.net_.theta()[0]), resid_all, info_scaled)
-            del rows_tr
-            with torch.no_grad():
-                model.net_.linear.weight.copy_(torch.as_tensor([[theta_root]], dtype=torch.float32, device=model.device))
-        else:
-            refine_theta(model, train_expanded)
+        refine_theta(model, train_expanded)
 
     return model, carried_best_val
 
@@ -260,13 +228,6 @@ def run_one_rep(rep_id, cfg, calibrated_c, device, base_seed, hidden_layers, pro
     # residuals on VALIDATION subjects' rows -- no projection net ever trained on them
     resid_val = residuals_on_heldout_rows(projs, dummy, expanded, val_idx)
 
-    if ORTHOGONALIZE_Z:
-        # the main net (training, early stopping, refine, scores) sees r instead of Z; theta is unchanged
-        Z_orth = expanded["Z"].astype(np.float32).copy()
-        Z_orth[train_idx, 0] = resid_all
-        Z_orth[val_idx, 0] = resid_val
-        expanded = dict(expanded, Z=Z_orth)
-
     scale = float(z_scaler.scale_.reshape(-1)[0])
     se = float(np.sqrt(max(var_theta_hat_scaled, 0.0))) / scale
     info_scaled = 1.0 / var_theta_hat_scaled                     # = sum of squared cross-fitted event residuals
@@ -335,7 +296,7 @@ def already_done(out_csv, rep_id):
 
 def main():
     global BATCH_SIZE, MAIN_BATCHES_PER_EPOCH, LR_SCHEDULE
-    global ZERO_OUTPUT_INIT, ORTHOGONALIZE_Z, THETA_LR_MULT, ROOT_REFINE
+    global THETA_LR_MULT
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamma", type=float, required=True)
     ap.add_argument("--rho", type=float, required=True)
@@ -364,12 +325,7 @@ def main():
     ap.add_argument("--proj-batches-per-epoch", type=int, default=None,
                      help="projection-net batch = ceil(fold inner-train size / this); overrides --proj-batch-size")
     ap.add_argument("--lr-phases", type=str, default=None, help="comma-separated LR schedule, e.g. 1e-3,1e-4,1e-5,1e-6")
-    ap.add_argument("--zero-output-init", action="store_true", help="start every restart from g == 0 (zeroed last layer)")
     ap.add_argument("--theta-lr-mult", type=float, default=1.0, help="learning-rate multiplier for the theta branch")
-    ap.add_argument("--root-refine", action="store_true",
-                     help="at each LR-phase boundary set theta to the orthogonalized-score root (g fixed) instead of the likelihood refine")
-    ap.add_argument("--orthogonalize-z", action="store_true",
-                     help="train on the cross-fitted residual Z - E[Z|X,t] instead of Z (removes the theta-g ridge)")
     ap.add_argument("--out", type=str, default=None)
     ap.add_argument("--save-datasets", action="store_true",
                      help="save each rep's simulated dataset (X,Z,T,delta,...) as an .npz for later inspection")
@@ -381,8 +337,7 @@ def main():
     MAIN_BATCHES_PER_EPOCH = args.main_batches_per_epoch
     if args.lr_phases:
         LR_SCHEDULE = [float(x) for x in args.lr_phases.split(",")]
-    ZERO_OUTPUT_INIT, ORTHOGONALIZE_Z, THETA_LR_MULT = args.zero_output_init, args.orthogonalize_z, args.theta_lr_mult
-    ROOT_REFINE = args.root_refine
+    THETA_LR_MULT = args.theta_lr_mult
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cfg = DGMConfig(gamma=args.gamma, rho=args.rho, censoring_rate=args.censoring_rate, n=args.n, k=args.k,
@@ -421,7 +376,7 @@ def main():
           f"calibrated_c={calibrated_c:.4f} batch_size={BATCH_SIZE} proj_batch_size={_cfr.PROJECTION_TRAIN_BATCH} "
           f"main_batches_per_epoch={MAIN_BATCHES_PER_EPOCH} proj_batches_per_epoch={_cfr.PROJECTION_BATCHES_PER_EPOCH} "
           f"lr_phases={LR_SCHEDULE}"
-          + f" zero_output_init={ZERO_OUTPUT_INIT} orthogonalize_z={ORTHOGONALIZE_Z} theta_lr_mult={THETA_LR_MULT} root_refine={ROOT_REFINE}", flush=True)
+          + f" theta_lr_mult={THETA_LR_MULT}", flush=True)
     print(f"main net arch: {hidden_layers}  projection net arch: {proj_hidden_layers}", flush=True)
     if dataset_dir is not None:
         print(f"saving per-rep datasets to: {dataset_dir}", flush=True)
