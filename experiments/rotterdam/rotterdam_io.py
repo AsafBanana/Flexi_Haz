@@ -78,8 +78,13 @@ def load_rotterdam_dataframe(data_path: str | Path = DEFAULT_DATA_PATH) -> pd.Da
         raise ValueError(f"Rotterdam CSV is missing required columns: {sorted(missing)}")
 
     df = df.copy()
-    df["T"] = np.minimum(df["rtime"].astype(float), df["dtime"].astype(float))
-    df["event"] = ((df["recur"].astype(int) == 1) | (df["death"].astype(int) == 1)).astype(int)
+    # composite endpoint: time to the first of recurrence and death; the event indicator is 1
+    # only if the FIRST observed time is an event (a death recorded after a recurrence-censoring
+    # time, or a recurrence after a death-censoring time, is not an event at T)
+    rtime, dtime = df["rtime"].astype(float), df["dtime"].astype(float)
+    df["T"] = np.minimum(rtime, dtime)
+    df["event"] = (((df["recur"].astype(int) == 1) & (rtime <= dtime))
+                   | ((df["death"].astype(int) == 1) & (dtime <= rtime))).astype(int)
 
     if (df["T"] <= 0).any():
         raise ValueError("All observed times must be positive after constructing T=min(rtime,dtime).")
@@ -170,7 +175,7 @@ def make_design_dataframe(
         "event_rate": float(delta.mean()),
         "censoring_rate": float(1.0 - delta.mean()),
         "max_followup": float(np.max(T)),
-        "endpoint": "T = min(rtime, dtime); event = recur OR death",
+        "endpoint": "T = min(rtime, dtime); event = 1 if the first observed time is a recurrence or a death",
         "excluded_columns": ["pid", "year", "rtime", "recur", "dtime", "death"],
         **design_metadata,
     }

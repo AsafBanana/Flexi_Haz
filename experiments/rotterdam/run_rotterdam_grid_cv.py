@@ -85,8 +85,8 @@ def parse_args() -> argparse.Namespace:
                    help="comma-separated learning-rate grid; default 1e-3 (fixed) for flexihaz, "
                         "1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2 for zhong")
     p.add_argument("--batch-size", type=int, default=100000)
-    p.add_argument("--max-epochs", type=int, default=None, help="None -> model default (500 flexihaz / 5000 zhong)")
-    p.add_argument("--patience", type=int, default=None, help="None -> model default (30 flexihaz / 35 zhong)")
+    p.add_argument("--max-epochs", type=int, default=500, help="per learning-rate phase (both models, as in setting 1)")
+    p.add_argument("--patience", type=int, default=30)
     p.add_argument("--tuning-max-epochs", type=int, default=None, help="None -> same as --max-epochs")
     p.add_argument("--n-restarts", type=int, default=5)
     p.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default="val_loss")
@@ -141,10 +141,8 @@ def model_kwargs(args: argparse.Namespace, hidden_layers, learning_rate, *, fina
         verbose=0,
         theta_lr_multiplier=args.theta_lr_mult,
     )
-    if args.max_epochs is not None:
-        kw["max_epochs"] = args.max_epochs
-    if args.patience is not None:
-        kw["patience"] = args.patience
+    kw["max_epochs"] = args.max_epochs
+    kw["patience"] = args.patience
     plain = args.zhong_plain
     kw["three_phase_lr"] = not (plain or args.no_three_phase_lr)
     kw["refine_theta"] = final and not (plain or args.no_refine_theta)
