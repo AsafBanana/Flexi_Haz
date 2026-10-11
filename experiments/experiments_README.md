@@ -21,8 +21,8 @@ refinement after each phase, 5 restarts selected by the efficient score,
 cross-fitted residual SE. Zhong: 3 learning-rate phases, 5 restarts selected
 by validation loss, profile-likelihood refinement, additive residual-net SE.
 Main and projection architectures from 35-point grids (Zhong: x 7 learning
-rates) on an independent tuning dataset; the n = 4000 selections are in
-`setting1/configs/`.
+rates) on an independent tuning dataset of size 8000, reused for both sample
+sizes.
 See [`setting1/setting1_README.md`](setting1/setting1_README.md).
 
 ## Setting 2 (`setting2/`)

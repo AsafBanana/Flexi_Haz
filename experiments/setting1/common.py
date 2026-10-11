@@ -18,7 +18,6 @@ if _src and _src not in sys.path:
     sys.path.insert(0, _src)
 
 HERE = Path(__file__).resolve().parent
-CONFIG_DIR = HERE / "configs"
 
 BASE_SEED = 221100          # replication r uses data seed BASE_SEED + r
 TUNING_SEED = 500_000       # independent tuning dataset

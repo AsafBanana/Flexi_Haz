@@ -19,7 +19,6 @@ zhong_ph_prod.py         Zhong model pieces: CoxPHDNN, Breslow loss, additive re
 tune_zhong_grid.py       Zhong architecture x learning-rate grid (35 x 7) on the tuning dataset
 run_zhong_reps.py        Zhong replications: 3 lr phases, 5 restarts, val-loss selection, refinement
 aggregate_setting1.py    one table: theta, bias, empirical SD, model SE, 90/95% coverage
-configs/                 the per-setting architectures / learning rates used in our n = 4000 runs
 ```
 
 Outputs go to `outputs/` (git-ignored).
@@ -38,7 +37,8 @@ with `a(X)`, `b(X)` pure interaction terms of the centred covariates (`--k 3`),
 scaled so the log-hazard variance splits PH / non-PH / linear as 70/0/30 when
 `gamma = 0` and 35/35/30 when `gamma = 0.5`. `gamma = 0` is proportional hazards;
 `gamma = 0.5` makes the X effect time-varying. Censoring: `C = c U`, with `c`
-calibrated by Monte Carlo per setting to 30% censoring (stored in the configs).
+calibrated by Monte Carlo per setting to 30% censoring (computed by the tuners
+and stored in their JSON output, reused by the replication runners).
 Replication `r` uses seed `221100 + r`; the tuning dataset uses seed 500000.
 
 ## Models and training
@@ -96,10 +96,9 @@ for early stopping.
   partial likelihood; the residual net reuses the selected architecture, as
   in the paper.
 
-`configs/` holds the JSON selections used in our `n = 4000` runs
-(`flexihaz_*.json`: main and projection net, where the projection net had been
-set equal to the main net; `zhong_*.json`: net, learning rate and the full grid
-results). Re-running the tuners writes new selections to `outputs/`.
+The tuners write their selections (and the calibrated censoring constant) to
+`outputs/tuning_flexihaz_<tag>.json` / `outputs/tuning_zhong_<tag>.json`, which
+the replication runners take through `--config`.
 
 ## Running
 
@@ -118,16 +117,16 @@ python tune_zhong_grid.py    --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --
 python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
     --n-reps 200 --n-init 5 --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
 
-# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20
+# n = 4000: FLEXI-Haz with four lr phases and theta learning rate x20 (same tuning file)
 python run_flexihaz_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
     --n-reps 200 --n-init 5 --theta-lr-mult 20 --lr-phases 1e-3,1e-4,1e-5,1e-6 \
-    --main-batches-per-epoch 213 --config configs/flexihaz_gamma0.5_rho0.5.json
+    --main-batches-per-epoch 213 --config outputs/tuning_flexihaz_gamma0.5_rho0.5_cens30_k3_n8000.json
 
 # Zhong, both sample sizes (same recipe)
 python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 8000 \
     --n-reps 200 --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
 python run_zhong_reps.py --gamma 0.5 --rho 0.5 --censoring-rate 0.3 --k 3 --n 4000 \
-    --n-reps 200 --config configs/zhong_gamma0.5_rho0.5.json
+    --n-reps 200 --config outputs/tuning_zhong_gamma0.5_rho0.5_cens30_k3_n8000.json
 
 python aggregate_setting1.py          # -> outputs/setting1_summary.csv (one row per model, setting and n)
 ```
