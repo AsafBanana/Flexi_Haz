@@ -957,10 +957,12 @@ def test_zhong_refine_theta_maximises_profile_partial_likelihood():
 
     T, delta, X, Z = small_survival_data(n=60, linear=True)
     model = FlexiHazardModel(**zhong_kwargs(refine_theta=True, three_phase_lr=False)).fit(T, delta, X, Z=Z)
-    rows = model._subject_rows(T, delta, model.X_train_scaled_, model.Z_train_scaled_)
+    # the refinement is done on the internal training subjects only
+    tr = model.internal_train_subject_ids_
+    rows = model._subject_rows(T[tr], delta[tr], model.X_train_scaled_[tr], model.Z_train_scaled_[tr])
     g = model._predict_g_on_pairs(rows["X"], rows["t"], batch_size=model.batch_size).reshape(-1, 1)
     Zs = rows["Z"].astype(np.float64)
-    T_t, d_t = torch.as_tensor(T), torch.as_tensor(delta, dtype=torch.float64)
+    T_t, d_t = torch.as_tensor(T[tr]), torch.as_tensor(delta[tr], dtype=torch.float64)
 
     def loss_at(theta):
         eta = torch.as_tensor(g + Zs @ theta.reshape(-1, 1))
@@ -1075,3 +1077,18 @@ def test_cox_warm_start_uses_x_and_z_jointly():
 
     assert joint.shape == z_only.shape == (2,)
     assert not np.allclose(joint, z_only)
+
+
+def test_refine_theta_uses_training_rows_only(monkeypatch):
+    T, delta, X, Z = small_survival_data(n=30, linear=True, seed=11)
+    seen = []
+    for three_phase in (False, True):
+        model = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=three_phase, max_epochs=2, patience=2, refine_theta=True))
+        orig = model._refine_theta
+        monkeypatch.setattr(model, "_refine_theta", lambda rows, _o=orig: (seen.append(rows["t"].shape[0]), _o(rows)))
+        model.fit(T, delta, X, Z=Z)
+        n_train_rows = int(np.isin(
+            make_expanded_data(T, delta, model.x_scaler_.transform(X), model.z_scaler_.transform(Z), model.time_grid)["subject_id"],
+            model.internal_train_subject_ids_).sum())
+        assert seen and all(n == n_train_rows for n in seen)
+        seen.clear()

@@ -18,6 +18,7 @@ The format follows the principles of Keep a Changelog. Version numbers follow se
 
 - Learning-rate phases: the best validation loss is now carried from one phase into the next (`_fit_expanded(init_best_val=...)`), so a later, lower-rate phase only replaces the weights when it improves on the whole run's best so far. Previously each phase restarted early stopping from `+inf` and could end on worse weights than the previous phase had found.
 - Early stopping ignores non-finite validation losses (and warns) instead of silently never improving.
+- The exact `theta` refinement (`refine_theta`) now uses the training rows only; the internal validation subjects are used for early stopping and never enter the point estimate (the covariance was already computed on training subjects only).
 
 ### Changed
 

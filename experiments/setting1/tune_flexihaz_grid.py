@@ -49,7 +49,7 @@ NEURONS = [25, 50, 100, 150, 200, 300, 500]
 
 
 def _fit_one_seed(hidden_layers, seed, X_scaled, Z_scaled, Z_raw, T, delta, tau, time_grid,
-                   expanded, device, X_raw):
+                   expanded, device, X_raw, z_scaler=None):
     model = FlexiHazardModel(
         hidden_layers=hidden_layers, activation="relu", dropout=0.0, weight_decay=0.0, grid_size=2,
         learning_rate=LR_PHASES[0], batch_size=BATCH_SIZE, tau=tau, max_epochs=MAIN_MAX_EPOCHS,
@@ -68,7 +68,7 @@ def _fit_one_seed(hidden_layers, seed, X_scaled, Z_scaled, Z_raw, T, delta, tau,
     model.x_dim_ = X_scaled.shape[1]
     model.z_dim_ = Z_scaled.shape[1]
     model.net_ = net
-    model.z_scaler_ = None
+    model.z_scaler_ = z_scaler  # Cox warm start of theta on the standardized-Z scale the net trains on
     model._initialize_theta_from_cox(T, delta, X_raw, Z_raw, Z_scaled)
 
     # train/val split uses model.seed (=TUNING_SEED, fixed) -- SAME split every rep, so only
@@ -88,10 +88,10 @@ def _fit_one_seed(hidden_layers, seed, X_scaled, Z_scaled, Z_raw, T, delta, tau,
 
 
 def evaluate_main_config(hidden_layers, X_scaled, Z_scaled, Z_raw, T, delta, tau, time_grid,
-                          expanded, device, X_raw):
+                          expanded, device, X_raw, z_scaler=None):
     t0 = time.perf_counter()
     best_val = _fit_one_seed(hidden_layers, TUNING_SEED, X_scaled, Z_scaled, Z_raw, T, delta, tau,
-                              time_grid, expanded, device, X_raw)
+                              time_grid, expanded, device, X_raw, z_scaler)
     fit_time = time.perf_counter() - t0
     return dict(hidden_layers=list(hidden_layers), dropout=0.0, val_loss=best_val, fit_time_sec=fit_time)
 
@@ -188,7 +188,7 @@ def main():
             i += 1
             hidden_layers = (n_neurons,) * n_layers
             r = evaluate_main_config(hidden_layers, X_scaled, Z_scaled, Z, T, delta, tau, time_grid,
-                                      expanded, device, X)
+                                      expanded, device, X, z_scaler)
             main_results.append(r)
             print(f"[{i}/{n_configs}] layers={n_layers} neurons={n_neurons}: "
                   f"val_loss={r['val_loss']:.6f} time={r['fit_time_sec']:.1f}s", flush=True)

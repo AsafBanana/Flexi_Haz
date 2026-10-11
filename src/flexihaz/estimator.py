@@ -346,11 +346,18 @@ class FlexiHazardModel:
             dropout=self.dropout,
         ).to(self.device)
 
+    @staticmethod
+    def _rows_subset(expanded, idx):
+        """The rows idx of an expanded / subject-level dict (validation rows must never
+        enter the theta refinement; they are used for early stopping only)."""
+        return {k: (v[idx] if isinstance(v, np.ndarray) and v.shape[0] == expanded["t"].shape[0] else v)
+                for k, v in expanded.items()}
+
     def _train_current_net(self, expanded, train_idx, val_idx):
         self._fit_expanded_phases(expanded, train_idx, val_idx)
 
         if self.has_linear_ and self.refine_theta and not self.three_phase_lr:
-            self._refine_theta(expanded)
+            self._refine_theta(self._rows_subset(expanded, train_idx))
 
     def _fit_restarts(self, expanded, train_idx, val_idx, T, delta, X, X_scaled, Z, Z_scaled):
         """Train n_restarts networks on the same split; keep the one picked by restart_selection."""
@@ -645,7 +652,8 @@ class FlexiHazardModel:
             epoch_offset += phase_epochs_run
 
             if self.three_phase_lr and self.has_linear_ and self.refine_theta:
-                self._refine_theta(expanded)
+                # exact re-solve of theta with g fixed, on the TRAINING rows only
+                self._refine_theta(self._rows_subset(expanded, train_idx))
 
         self.phase_histories_ = phase_histories
 
