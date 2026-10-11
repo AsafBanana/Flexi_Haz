@@ -14,6 +14,10 @@ The format follows the principles of Keep a Changelog. Version numbers follow se
 - `model_type="zhong"` option for `FlexiHazardModel`: the proportional-hazards model of Zhong, Mueller and Wang (2022), `h(t | X, Z) = h0(t) exp{theta^T Z + g(X)}`, fitted with the same estimator. The network has no time input, training is full-batch on the Breslow partial likelihood, `theta` is refined by profiling the partial likelihood with `g` fixed, and the projection networks for the covariance and the efficient score are additive (`g_X(X) + g_T(t)`). Cumulative hazard and survival use the Breslow baseline. `max_epochs` / `patience` now default to `None`, resolving to `500` / `30` for the default model and `5000` / `35` for `model_type="zhong"`. New `ZhongPHNet`, `AdditiveProjectionNet`, `cox_partial_likelihood_loss`, and a `projection_net` argument for `estimate_theta_variance` / `crossfitted_score_residuals`.
 - `--theta-lr-mult` and `--model-type {flexihaz,zhong}` options in the partially linear simulation runner.
 
+### Added (unreleased, continued)
+
+- `theta_init_subjects="all" | "train"` for `FlexiHazardModel`: whether the Cox warm start of `theta` uses all subjects or only the internal training subjects.
+
 ### Fixed
 
 - Learning-rate phases: the best validation loss is now carried from one phase into the next (`_fit_expanded(init_best_val=...)`), so a later, lower-rate phase only replaces the weights when it improves on the whole run's best so far. Previously each phase restarted early stopping from `+inf` and could end on worse weights than the previous phase had found.

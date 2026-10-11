@@ -1,5 +1,6 @@
-"""Exhaustive architecture (and, for Zhong, learning-rate) grid search on an independent
-tuning dataset, with five common subject-level folds.
+"""FLEXI-Haz architecture selection for setting 2: exhaustive grid on an independent tuning
+dataset with five common subject-level folds (Supplementary A.2.2). The Zhong comparator is
+tuned by tune_zhong_optuna.py.
 
 Protocol (no Optuna, no weight-decay or dropout search):
 
@@ -11,12 +12,9 @@ Protocol (no Optuna, no weight-decay or dropout search):
   early stopping (validation_fraction=0.33);
 * the outer held-out fold is scored with the fitted model's negative log-likelihood
   (piecewise-exponential NLL for FLEXI-Haz, Breslow partial-likelihood NLL for Zhong);
-* FLEXI-Haz (--model-type flexihaz): all 27 architectures of Table 7 (135 fits), learning
-  rate FIXED at 1e-3;
-* Zhong et al. 2022 (--model-type zhong): the same 27 architectures x Zhong's learning-rate
-  grid {1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1} (945 fits), trained as Zhong does: one
-  constant-rate Adam phase, full batch, no theta refinement;
-* the configuration minimising the mean outer-fold NLL is selected.
+* all 27 architectures of Table 7 (135 fits), learning rate FIXED at 1e-3, the usual
+  three-phase schedule inside each fit;
+* the architecture minimising the mean outer-fold NLL is selected.
 
 The grid can be split across machines with --arch-ids / --arch-start / --arch-end; every
 fold result is appended to a CSV as it finishes (resume-safe with --skip-completed).
@@ -47,10 +45,8 @@ ARCHITECTURES = [
     [16, 16, 16, 16], [16, 16, 32, 32], [32, 32, 32, 32], [32, 32, 64, 64], [64, 64, 64, 64],
     [16, 16, 16, 16, 16], [16, 16, 32, 32, 32], [32, 32, 32, 32, 32],
 ]
-ZHONG_LEARNING_RATES = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
 MODEL_DEFAULTS = {  # max_epochs, patience, learning rates, file prefix
     "flexihaz": dict(max_epochs=2000, patience=15, learning_rates=[1e-3], prefix="flexihaz_partial_linear"),
-    "zhong": dict(max_epochs=5000, patience=35, learning_rates=ZHONG_LEARNING_RATES, prefix="zhong"),
 }
 FIELDS = ["arch_idx", "hidden_layers", "learning_rate", "fold", "holdout_nll", "best_inner_val_loss",
           "epochs_run", "fit_time_sec"]
@@ -74,14 +70,13 @@ def import_flexihaz():
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Grid search for FLEXI-Haz / Zhong on an independent tuning dataset.")
     p.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
-    p.add_argument("--model-type", choices=["flexihaz", "zhong"], default="flexihaz")
+    p.add_argument("--model-type", choices=["flexihaz"], default="flexihaz")
     p.add_argument("--tuning-seed", type=int, default=500000, help="seed of the independent tuning dataset")
     p.add_argument("--fold-seed", type=int, default=221100, help="KFold random_state (common folds for all configs)")
     p.add_argument("--folds", type=int, default=5)
-    p.add_argument("--learning-rates", type=str, default=None,
-                   help="comma-separated grid; default 1e-3 for flexihaz, Zhong's 7-value grid for zhong")
-    p.add_argument("--max-epochs", type=int, default=None, help="default 2000 (flexihaz) / 5000 (zhong)")
-    p.add_argument("--patience", type=int, default=None, help="default 15 (flexihaz) / 35 (zhong)")
+    p.add_argument("--learning-rates", type=str, default=None, help="comma-separated grid; default fixed 1e-3")
+    p.add_argument("--max-epochs", type=int, default=None, help="default 2000")
+    p.add_argument("--patience", type=int, default=None, help="default 15")
     p.add_argument("--batch-size", type=int, default=100000)
     p.add_argument("--arch-start", type=int, default=0)
     p.add_argument("--arch-end", type=int, default=len(ARCHITECTURES))
@@ -134,8 +129,6 @@ def model_kwargs(args, hl, lr, seed, tau):
         device=args.device, seed=seed, verbose=0, num_workers=2, pin_memory=True, persistent_workers=True,
         non_blocking=True,
     )
-    if args.model_type == "zhong":
-        kw["three_phase_lr"] = False  # Zhong's recipe: one constant-rate phase
     return kw
 
 
@@ -170,7 +163,7 @@ def combine(args: argparse.Namespace) -> None:
         "fold_seed": args.fold_seed,
         "folds": args.folds,
         "selection": "argmin mean outer-fold NLL over the 27-architecture grid"
-                     + (" x Zhong's learning-rate grid" if len(args.learning_rates) > 1 else " at fixed lr")
+                     + (" x learning-rate grid" if len(args.learning_rates) > 1 else " at fixed lr")
                      + "; weight_decay 0, dropout 0",
         "best_value": float(best.mean_holdout_nll),
         "best_params": {

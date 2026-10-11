@@ -1092,3 +1092,15 @@ def test_refine_theta_uses_training_rows_only(monkeypatch):
             model.internal_train_subject_ids_).sum())
         assert seen and all(n == n_train_rows for n in seen)
         seen.clear()
+
+
+def test_theta_init_subjects_train_changes_warm_start():
+    T, delta, X, Z = small_survival_data(n=40, linear=True, seed=5)
+    m_all = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=1, patience=1, theta_init="cox"))
+    m_tr = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=1, patience=1, theta_init="cox",
+                                                theta_init_subjects="train"))
+    m_all.fit(T, delta, X, Z=Z)
+    m_tr.fit(T, delta, X, Z=Z)
+    assert not np.allclose(m_all.theta_init_original_scale_, m_tr.theta_init_original_scale_)
+    with pytest.raises(InputValidationError):
+        FlexiHazardModel(**tiny_model_kwargs(theta_init_subjects="validation"))

@@ -1,7 +1,8 @@
 """Run partially linear FLEXI-Haz or the Zhong et al. (2022) PH-DNN on the saved replications.
 
 Both models are fitted with flexihaz.FlexiHazardModel (--model-type flexihaz | zhong) using
-the per-model tuned architecture from tune_grid_cv.py (tuning/<prefix>_best_params.json).
+the per-model tuned configuration (tune_grid_cv.py for FLEXI-Haz, tune_zhong_optuna.py for Zhong;
+tuning/<prefix>_best_params.json).
 
 Examples
 --------
@@ -11,9 +12,10 @@ Smoke test:
 FLEXI-Haz, 200 replications split over machines (3-phase lr, theta refinement, 5 restarts):
     python run_replications.py --model-type flexihaz --n-restarts 5 --start-rep 0 --end-rep 50
 
-Zhong et al. (2022), Zhong's own recipe: one constant phase at the tuned learning rate, no
-theta refinement, 5 restarts (model folder zhong_plain_k5_val_loss):
-    python run_replications.py --model-type zhong --zhong-plain --n-restarts 5
+Zhong et al. (2022), the comparator's recipe: one initialization, one constant phase at the tuned
+learning rate, no theta refinement, raw covariates, Cox warm start on the training subjects
+(model folder zhong_plain):
+    python run_replications.py --model-type zhong --zhong-plain
 
 Faster learning rate for theta (model folder gets a _thetalr20 suffix):
     python run_replications.py --theta-lr-mult 20
@@ -73,8 +75,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-rep", type=int, default=0)
     parser.add_argument("--end-rep", type=int, default=200)
     parser.add_argument("--tau", type=float, default=10.0)
-    parser.add_argument("--max-epochs", type=int, default=None, help="default 2000 (flexihaz) / 5000 (zhong)")
-    parser.add_argument("--patience", type=int, default=None, help="default 30 (flexihaz) / 35 (zhong)")
+    parser.add_argument("--max-epochs", type=int, default=2000)
+    parser.add_argument("--patience", type=int, default=30)
     parser.add_argument("--projection-max-epochs", type=int, default=2000)
     parser.add_argument("--projection-patience", type=int, default=30)
     parser.add_argument("--projection-n-splits", type=int, default=5)
@@ -93,16 +95,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-type", choices=["flexihaz", "zhong"], default="flexihaz",
                         help="'zhong' fits the proportional-hazards model of Zhong et al. (2022) with the same estimator")
     parser.add_argument("--zhong-plain", action="store_true",
-                        help="single constant-lr phase and no theta refinement (Zhong's own recipe); model folder suffix _plain")
+                        help="Zhong's own recipe: one constant-lr phase, no theta refinement, raw (unstandardized) covariates, "
+                             "Cox warm start on the training subjects; model folder suffix _plain")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if args.max_epochs is None:
-        args.max_epochs = 5000 if args.model_type == "zhong" else 2000
-    if args.patience is None:
-        args.patience = 35 if args.model_type == "zhong" else 30
     if args.smoke_test:
         args.output_dir = str(Path(args.output_dir) / "smoke_test")
         args.start_rep = 0
@@ -171,6 +170,8 @@ def main() -> None:
                 persistent_workers=True,
                 non_blocking=True,
                 three_phase_lr=not args.zhong_plain,
+                standardize=not args.zhong_plain,
+                theta_init_subjects="train" if args.zhong_plain else "all",
                 n_restarts=args.n_restarts,
                 restart_selection=args.restart_selection,
                 theta_lr_multiplier=args.theta_lr_mult,
@@ -201,6 +202,8 @@ def main() -> None:
                 "theta_lr_multiplier": float(args.theta_lr_mult),
                 "three_phase_lr": not args.zhong_plain,
                 "refine_theta": not args.zhong_plain,
+                "standardize": not args.zhong_plain,
+                "theta_init_subjects": "train" if args.zhong_plain else "all",
                 **theta_summary_extra,
             }
             if model.restart_results_ is not None:

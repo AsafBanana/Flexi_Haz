@@ -81,6 +81,7 @@ class FlexiHazardModel:
         restart_selection="val_loss",
         theta_lr_multiplier=1.0,
         model_type="flexihaz",
+        theta_init_subjects="all",
     ):
         self.hidden_layers = tuple(hidden_layers)
         self.activation = activation
@@ -152,6 +153,9 @@ class FlexiHazardModel:
         self.scale_time = bool(scale_time)
         self.time_scale_: float | None = None
 
+        self.theta_init_subjects = str(theta_init_subjects).lower()
+        if self.theta_init_subjects not in {"all", "train"}:
+            raise InputValidationError("theta_init_subjects must be 'all' or 'train'.")
         self.n_restarts = int(n_restarts)
         self.restart_selection = str(restart_selection)
         if self.n_restarts < 1:
@@ -254,15 +258,21 @@ class FlexiHazardModel:
         self.internal_train_subject_ids_ = train_subject_ids
         self.internal_val_subject_ids_ = val_subject_ids
 
+        # subjects used for the Cox warm start of theta ("all" or the internal training subjects)
+        init_subj = train_subject_ids if self.theta_init_subjects == "train" else np.arange(len(T))
+        T_init, delta_init, X_init = T[init_subj], delta[init_subj], X[init_subj]
+        Z_init = None if Z is None else Z[init_subj]
+        Z_scaled_init = None if Z_scaled is None else Z_scaled[init_subj]
+
         if self.n_restarts == 1:
             self._build_net(X_scaled, Z_scaled)
             if self.has_linear_:
-                self._initialize_theta_from_cox(T, delta, X, Z, Z_scaled)
+                self._initialize_theta_from_cox(T_init, delta_init, X_init, Z_init, Z_scaled_init)
             self._train_current_net(expanded, train_idx, val_idx)
             self.restart_results_ = None
             self.selected_restart_ = 0
         else:
-            self._fit_restarts(expanded, train_idx, val_idx, T, delta, X, X_scaled, Z, Z_scaled)
+            self._fit_restarts(expanded, train_idx, val_idx, T_init, delta_init, X_init, X_scaled, Z_init, Z_scaled_init)
 
         self.theta_hat = None if not self.has_linear_ else self.net_.theta()
         if self.theta_hat is not None and self.z_scaler_ is not None:
