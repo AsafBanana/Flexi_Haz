@@ -1,10 +1,11 @@
-"""Input/output helpers for the Rotterdam breast-cancer real-data experiment.
+"""Input/output helpers for the Rotterdam breast-cancer treatment-effect experiment.
 
-The experiment follows Section 7.2 of the FLEXI-Haz paper:
 - outcome: time to the earlier of recurrence or death;
-- linear treatment variables: chemotherapy and hormonal therapy;
-- flexible covariates: age, nodes, progesterone receptor, estrogen receptor,
-  menopausal status, tumor grade, and one-hot encoded tumor size.
+- linear treatment variables (Z): chemotherapy and hormonal therapy
+  (design "standard"), or their low/high-ER interactions (design "er_interaction");
+- flexible covariates (X): age, nodes, progesterone receptor, estrogen receptor,
+  menopausal status, tumor grade, and one-hot encoded tumor size;
+- deterministic outer 5-fold split shared by all models (results/folds.csv).
 """
 
 from __future__ import annotations
@@ -15,21 +16,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
 
 DEFAULT_EXPERIMENT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_PATH = DEFAULT_EXPERIMENT_DIR / "rotterdam_breast_cancer.csv"
 DEFAULT_RESULTS_DIR = DEFAULT_EXPERIMENT_DIR / "results"
-
-MODEL_DIRS = {
-    "flexihaz_partial_linear": "flexihaz_partial_linear",
-    "flexihaz_nonlinear": "flexihaz_nonlinear",
-    "cox_ph": "cox_ph",
-    "random_survival_forest": "random_survival_forest",
-    "zhong_mueller_wang_placeholder": "zhong_mueller_wang_placeholder",
-    "zhong2022_ph": "zhong2022_ph",
-}
 
 STANDARD_TREATMENT_COLUMNS = ["chemo", "hormon"]
 
@@ -219,22 +210,6 @@ def make_outer_folds(
     return folds
 
 
-def inner_train_val_indices(train_indices: np.ndarray, val_fraction: float = 0.20, seed: int = 221100) -> tuple[np.ndarray, np.ndarray]:
-    train_indices = np.asarray(train_indices, dtype=int).reshape(-1)
-    inner_train, inner_val = train_test_split(
-        train_indices,
-        test_size=val_fraction,
-        random_state=seed,
-        shuffle=True,
-    )
-    return np.asarray(inner_train, dtype=int), np.asarray(inner_val, dtype=int)
-
-
-def standardize_from_train(X_train: np.ndarray, X_test: np.ndarray) -> tuple[np.ndarray, np.ndarray, StandardScaler]:
-    scaler = StandardScaler()
-    X_train_s = scaler.fit_transform(np.asarray(X_train, dtype=np.float64))
-    X_test_s = scaler.transform(np.asarray(X_test, dtype=np.float64))
-    return X_train_s, X_test_s, scaler
 
 
 def load_arrays_and_folds(
@@ -270,35 +245,6 @@ def load_arrays_and_folds(
     }
 
 
-def model_output_dir(results_dir: str | Path, model_name: str) -> Path:
-    sub = MODEL_DIRS.get(model_name, model_name)
-    return ensure_dir(Path(results_dir) / sub)
 
 
-def fold_file(results_dir: str | Path, model_name: str, fold_id: int, kind: str, suffix: str = "csv") -> Path:
-    return model_output_dir(results_dir, model_name) / f"fold_{int(fold_id):02d}_{kind}.{suffix}"
 
-
-def tuning_dir(results_dir: str | Path, fold_id: int) -> Path:
-    return ensure_dir(Path(results_dir) / "tuning" / f"fold_{int(fold_id):02d}")
-
-
-def best_params_path(results_dir: str | Path, fold_id: int, model_name: str) -> Path:
-    return tuning_dir(results_dir, fold_id) / f"{model_name}_best_params.json"
-
-
-def completed(results_dir: str | Path, model_name: str, fold_id: int) -> bool:
-    log_path = fold_file(results_dir, model_name, fold_id, "log", suffix="json")
-    if not log_path.exists():
-        return False
-    try:
-        payload = load_json(log_path)
-    except Exception:
-        return False
-    return payload.get("status") == "success"
-
-
-def write_summary(path: str | Path, row: dict[str, Any]) -> None:
-    path = Path(path)
-    ensure_dir(path.parent)
-    pd.DataFrame([row]).to_csv(path, index=False)

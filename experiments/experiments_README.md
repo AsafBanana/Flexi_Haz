@@ -28,23 +28,27 @@ The experiment compares:
 The final study consists of 200 training replications with (n=8000) and
 a common fixed test set of 10,000 subjects.
 
-See [`simulation/README.md`](simulation/README.md) for the
+See [`simulation/simulation_README.md`](simulation/simulation_README.md) for the
 data-generating mechanism, tuning protocol, execution commands, output
 structure, and aggregation procedure.
 
 ## Rotterdam breast-cancer study
 
-`rotterdam/` contains the real-data evaluation on the Rotterdam
-breast-cancer dataset.
+`rotterdam/` compares the treatment-effect estimates of partially linear
+FLEXI-Haz and of the Zhong et al. (2022) proportional-hazards DNN on the
+Rotterdam breast-cancer data (2,982 patients), for hormonal therapy and
+chemotherapy overall (`standard` design) and split by estrogen-receptor
+status at ER = 61 (`er_interaction` design).
 
-The final analysis uses the ER-interaction design from the report, with
-separate hormonal-therapy and chemotherapy effects for patients with ER
-below 61 and ER at least 61. Predictive evaluation uses shared five-fold
-outer splits.
+Both models are fitted with `FlexiHazardModel` under one protocol: five
+shared outer folds, a per-fold exhaustive architecture grid (depth 2-6,
+width 25-500) at a fixed learning rate, five random restarts, and
+cross-fitted residual-projection standard errors. FLEXI-Haz uses a x20
+learning-rate multiplier for `theta`; Zhong is run with its own training
+recipe (`--zhong-plain`).
 
-See [`rotterdam/README.md`](rotterdam/README.md) for the endpoint
-definition, covariate construction, tuning and evaluation protocol,
-execution commands, and result files.
+See [`rotterdam/rotterdam_README.md`](rotterdam/rotterdam_README.md) for
+the endpoint, covariate construction, protocol and commands.
 
 ## Installation
 

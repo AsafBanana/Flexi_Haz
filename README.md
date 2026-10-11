@@ -269,9 +269,13 @@ The real-data experiment uses the Rotterdam breast-cancer dataset with
 separate hormonal-therapy and chemotherapy effects for low- and
 high-estrogen-receptor groups, using ER = 61 as the threshold.
 
-Predictive evaluation is based on five shared outer folds for the neural
-models and Random Survival Forest. The experiment also compares
-ER-specific treatment-effect estimates and confidence intervals.
+It compares the treatment-effect estimates and confidence intervals of
+partially linear FLEXI-Haz and of the Zhong et al. (2022)
+proportional-hazards DNN, both fitted with `FlexiHazardModel`
+(`model_type="flexihaz"` / `"zhong"`) under one protocol: five shared
+outer folds, a per-fold exhaustive architecture grid at a fixed learning
+rate, five random restarts, and cross-fitted residual-projection standard
+errors. FLEXI-Haz uses `theta_lr_multiplier=20` for its linear branch.
 
 See [`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md)
 for details.
