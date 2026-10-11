@@ -1104,3 +1104,16 @@ def test_theta_init_subjects_train_changes_warm_start():
     assert not np.allclose(m_all.theta_init_original_scale_, m_tr.theta_init_original_scale_)
     with pytest.raises(InputValidationError):
         FlexiHazardModel(**tiny_model_kwargs(theta_init_subjects="validation"))
+
+
+def test_projection_batch_size_option():
+    T, delta, X, Z = small_survival_data(n=40, linear=True, seed=9)
+    m = FlexiHazardModel(**tiny_model_kwargs(three_phase_lr=False, max_epochs=1, patience=1, batch_size=4096,
+                                            compute_theta_variance=True, projection_max_epochs=2, projection_n_splits=2,
+                                            projection_batch_size=128))
+    assert m._projection_batch() == 128
+    m.fit(T, delta, X, Z=Z)
+    assert m.var_theta_hat.shape == (2, 2)
+    assert FlexiHazardModel(**tiny_model_kwargs(batch_size=4096))._projection_batch() == 2048
+    with pytest.raises(InputValidationError):
+        FlexiHazardModel(**tiny_model_kwargs(projection_batch_size=0))

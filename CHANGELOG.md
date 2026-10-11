@@ -16,6 +16,7 @@ The format follows the principles of Keep a Changelog. Version numbers follow se
 
 ### Added (unreleased, continued)
 
+- `projection_batch_size` for `FlexiHazardModel`: minibatch of the residual projection networks (default `None` = `min(batch_size, 2048)`, the previous behaviour).
 - `theta_init_subjects="all" | "train"` for `FlexiHazardModel`: whether the Cox warm start of `theta` uses all subjects or only the internal training subjects.
 
 ### Fixed

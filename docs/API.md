@@ -75,6 +75,7 @@ FlexiHazardModel(
     scale_time=True,
     n_restarts=1,
     restart_selection="val_loss",
+    projection_batch_size=None,
     theta_lr_multiplier=1.0,
     theta_init_subjects="all",
     model_type="flexihaz",
@@ -112,6 +113,10 @@ With `n_restarts > 1`, steps 7–9 are repeated for `n_restarts` networks initia
 - `restart_selection="efficient_score"` keeps the network whose efficient score for `theta` is closest to zero (Euclidean norm over the columns of `Z`). The score uses residuals `Z - E[Z | X, t]` that are cross-fitted over the internal training subjects, so no residual is predicted by a projection network trained on that subject. It requires `Z`; without `Z` the estimator warns and selects by validation loss.
 
 Restart 0 is identical to the single fit. After fitting, `model.restart_results_` lists each restart's seed, validation loss, `theta` (original scale) and, for score selection, the score and its norm; `model.selected_restart_` is the chosen index. `n_restarts=1` (the default) leaves both at their single-fit values (`None` and `0`).
+
+### Projection-network minibatch
+
+`projection_batch_size` (default `None`) is the minibatch used to train the residual projection networks for the covariance and the efficient score; `None` means `min(batch_size, 2048)`.
 
 ### Subjects used for the Cox warm start
 

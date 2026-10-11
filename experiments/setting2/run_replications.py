@@ -80,6 +80,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--projection-max-epochs", type=int, default=2000)
     parser.add_argument("--projection-patience", type=int, default=30)
     parser.add_argument("--projection-n-splits", type=int, default=5)
+    parser.add_argument("--projection-batch-size", type=int, default=128, help="minibatch of the projection nets (paper: 128)")
     parser.add_argument("--seed", type=int, default=221100)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--skip-completed", action="store_true", default=True)
@@ -162,6 +163,7 @@ def main() -> None:
                 projection_max_epochs=args.projection_max_epochs,
                 projection_patience=args.projection_patience,
                 projection_n_splits=args.projection_n_splits,
+                projection_batch_size=args.projection_batch_size,
                 device=args.device,
                 seed=args.seed + rep_id,
                 verbose=0,
@@ -200,6 +202,7 @@ def main() -> None:
                 "params_path": str(params_path),
                 "model_type": args.model_type,
                 "theta_lr_multiplier": float(args.theta_lr_mult),
+                "projection_batch_size": int(args.projection_batch_size),
                 "three_phase_lr": not args.zhong_plain,
                 "refine_theta": not args.zhong_plain,
                 "standardize": not args.zhong_plain,

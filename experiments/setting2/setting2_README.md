@@ -69,8 +69,8 @@ dropout 0.
   with the lowest validation loss kept. Covariance from the internal training
   subjects (`n_tr = 5360` at n = 8000): per coordinate of Z a projection net
   with the main net's hidden widths regresses `Z_j` on `(T/10, X)` among
-  events, 5 folds, Adam `1e-3`, max 2000 epochs, patience 30, each held-out
-  fold used for early stopping and prediction; with
+  events, 5 folds, Adam `1e-3`, batch 128, max 2000 epochs, patience 30, each
+  held-out fold used for early stopping and prediction; with
   `R_i = Delta_i (Z_i - m(T_i, X_i))` on the standardized scale,
   `V_std = (1/n_tr) ((1/n_tr) sum R_i R_i' + 1e-8 I)^-1`, reported as
   `D^-1 V_std D^-1`.

@@ -66,6 +66,7 @@ class FlexiHazardModel:
         projection_max_epochs=300,
         projection_patience=30,
         projection_n_splits=5,
+        projection_batch_size=None,
         theta_init="cox",
         cox_penalizer=1e-6,
         device="auto",
@@ -107,6 +108,10 @@ class FlexiHazardModel:
         self.compute_theta_variance = bool(compute_theta_variance)
         self.projection_max_epochs = int(projection_max_epochs)
         self.projection_patience = int(projection_patience)
+        # minibatch of the projection (residual) networks; None -> min(batch_size, 2048)
+        self.projection_batch_size = None if projection_batch_size is None else int(projection_batch_size)
+        if self.projection_batch_size is not None and self.projection_batch_size <= 0:
+            raise InputValidationError("projection_batch_size must be a positive integer or None.")
         self.projection_n_splits = int(projection_n_splits)
         self.theta_init = theta_init
         self.cox_penalizer = float(cox_penalizer)
@@ -306,7 +311,7 @@ class FlexiHazardModel:
                 dropout=self.dropout,
                 learning_rate=self.learning_rate,
                 weight_decay=self.weight_decay,
-                batch_size=min(self.batch_size, 2048),
+                batch_size=self._projection_batch(),
                 max_epochs=self.projection_max_epochs,
                 patience=self.projection_patience,
                 n_splits=self.projection_n_splits,
@@ -328,6 +333,9 @@ class FlexiHazardModel:
         self.Z_train_scaled_ = None if Z_scaled is None else Z_scaled.astype(np.float32)
         self.is_fitted_ = True
         return self
+
+    def _projection_batch(self):
+        return self.projection_batch_size if self.projection_batch_size is not None else min(self.batch_size, 2048)
 
     def _projection_net_kind(self):
         return "additive" if self.model_type == "zhong" else "joint"
@@ -442,7 +450,7 @@ class FlexiHazardModel:
             dropout=self.dropout,
             learning_rate=self.learning_rate,
             weight_decay=self.weight_decay,
-            batch_size=min(self.batch_size, 2048),
+            batch_size=self._projection_batch(),
             max_epochs=self.projection_max_epochs,
             patience=self.projection_patience,
             n_splits=self.projection_n_splits,
