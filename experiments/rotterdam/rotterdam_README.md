@@ -290,6 +290,38 @@ version control. Cluster logs, temporary smoke-test outputs, serialized
 Optuna `.pkl` studies, and obsolete result directories should be
 excluded.
 
+## Exhaustive architecture grid CV (`run_rotterdam_grid_cv.py`)
+
+`run_rotterdam_grid_cv.py` runs the treatment-effect analysis with the
+same tuning protocol for FLEXI-Haz and for the Zhong et al. (2022)
+proportional-hazards DNN (both via `FlexiHazardModel`, `--model-type
+flexihaz|zhong`):
+
+- outer folds from `results/folds.csv`, fit on each fold's training rows;
+- per fold, an exhaustive grid over depth L in {2, 3, 4, 5, 6} and width
+  w in {25, 50, 100, 150, 200, 300, 500} (35 architectures,
+  `hidden_layers = (w,) * L`) at a fixed learning rate (default 1e-3),
+  weight decay 0, dropout 0; each candidate is scored by its validation
+  loss on the estimator's internal 67%/33% subject split and the argmin
+  is selected;
+- the selected architecture is refitted with `--n-restarts` (default 5)
+  random restarts, keeping the lowest-validation-loss restart; theta, SE
+  (joint-(t, X) residual nets for FLEXI-Haz, additive g_X(X) + g_T(t)
+  nets for Zhong), 90% and 95% CIs are written per fold and averaged
+  across folds.
+
+``` bash
+python run_rotterdam_grid_cv.py --model-type flexihaz --design er_interaction --theta-lr-mult 20
+python run_rotterdam_grid_cv.py --model-type zhong --design er_interaction --zhong-plain
+```
+
+`--zhong-plain` reproduces Zhong's own training recipe (one constant-lr
+phase, no profile-likelihood refinement of theta); without it the
+3-phase schedule and the refinement are used for both models.  Outputs
+go to `results/<model_type>_gridcv[_thetalr<M>][_plain]/<design>/`
+(`fold_XX_grid.csv`, `fold_XX_treatment_effects.csv`,
+`fold_XX_log.json`, `summary_treatment_effects.csv`).
+
 ## Analysis notebook
 
 `analyze_results_er_interaction.ipynb` summarizes the final
