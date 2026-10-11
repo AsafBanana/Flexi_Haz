@@ -9,3 +9,5 @@ __pycache__/
 # generated setting-2 outputs (datasets, tuning, replications)
 /experiments/setting2/outputs*/
 /experiments/setting1/outputs/
+**/.DS_Store
+*.pyc

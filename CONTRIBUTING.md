@@ -35,7 +35,6 @@ experiments/
 Small user-facing demonstrations belong under:
 
 ```text
-examples/
 ```
 
 Avoid adding generated datasets, checkpoints, temporary logs, Optuna databases, or other large reproducible artifacts to version control.

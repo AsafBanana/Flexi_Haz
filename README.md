@@ -24,10 +24,8 @@ in which all covariates are modeled flexibly by the neural network.
 
 This repository contains the reusable Python implementation, tests, and
 reproducible code for the two simulation settings and the Rotterdam
-breast-cancer application described in the accompanying report. The report
-also provides full explanations of the package, the theoretical background
-and methodology behind FLEXI-Haz, implementation details, experimental
-design, and additional discussion of the empirical results.
+breast-cancer application of the accompanying paper, which gives the
+theoretical background, the methodology and the full experimental design.
 
 ## Main features
 
@@ -77,17 +75,14 @@ FLEXI-Haz/
 │       ├── tuning.py
 │       ├── utils.py
 │       └── exceptions.py
-├── examples/
 ├── experiments/
 │   ├── experiments_README.md
 │   ├── setting1/     (setting1_README.md)
 │   ├── setting2/     (setting2_README.md)
 │   └── rotterdam/    (rotterdam_README.md)
 ├── tests/
-├── docs/
-│   └── FLEXI_Haz_Report.pdf
-└── .github/
-    └── workflows/
+└── docs/
+    └── API.md
 ```
 
 ## Installation
@@ -280,19 +275,6 @@ construction, likelihood calculations, network behavior, partially
 linear and nonparametric fitting, prediction, subject-level validation
 splitting, early stopping, time scaling, the three-phase learning-rate
 schedule, inference, tuning, device handling, and reproducibility.
-
-## Report
-
-The accompanying report is available at:
-
-```text
-docs/FLEXI_Haz_Report.pdf
-```
-
-It contains a complete explanation of the package, the theoretical
-background and methodological formulation behind FLEXI-Haz, implementation
-details, experimental design, full empirical results, and additional
-discussion of the simulation and Rotterdam analyses.
 
 ## Reproducibility
 
