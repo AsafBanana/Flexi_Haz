@@ -126,8 +126,7 @@ def model_kwargs(args, hl, lr, seed, tau):
         model_type=args.model_type, hidden_layers=tuple(hl), activation="relu", dropout=0.0, learning_rate=lr,
         weight_decay=0.0, batch_size=args.batch_size, grid_size="n", tau=tau, max_epochs=args.max_epochs,
         patience=args.patience, validation_fraction=0.33, compute_theta_variance=False, refine_theta=False,
-        device=args.device, seed=seed, verbose=0, num_workers=2, pin_memory=True, persistent_workers=True,
-        non_blocking=True,
+        device=args.device, seed=seed, verbose=0,
     )
     return kw
 

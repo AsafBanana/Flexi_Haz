@@ -84,7 +84,7 @@ def tune_flexihaz(
 
     model_kwargs : dict, optional
         Extra keyword arguments passed to FlexiHazardModel.
-        Useful for num_workers, pin_memory, persistent_workers, and non_blocking.
+        For example non_blocking or theta_init_subjects.
 
     Returns
     -------

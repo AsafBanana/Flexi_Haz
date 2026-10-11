@@ -452,13 +452,6 @@ def test_constructor_rejects_invalid_hyperparameters():
             FlexiHazardModel(**tiny_model_kwargs(**override))
 
 
-def test_optional_dataloader_arguments_exist_if_supported_by_current_api():
-    """Regression test for the planned DataLoader/device-transfer configurability."""
-    sig = inspect.signature(FlexiHazardModel)
-    expected = {"num_workers", "pin_memory", "persistent_workers", "non_blocking"}
-    missing = expected.difference(sig.parameters)
-    assert not missing, f"Missing FlexiHazardModel arguments: {sorted(missing)}"
-
 def test_time_scaling_divides_network_time_by_tau():
     T, delta, X = small_survival_data(n=20, linear=False)
 

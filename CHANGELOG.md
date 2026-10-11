@@ -19,6 +19,10 @@ The format follows the principles of Keep a Changelog. Version numbers follow se
 - `projection_batch_size` for `FlexiHazardModel`: minibatch of the residual projection networks (default `None` = `min(batch_size, 2048)`, the previous behaviour).
 - `theta_init_subjects="all" | "train"` for `FlexiHazardModel`: whether the Cox warm start of `theta` uses all subjects or only the internal training subjects.
 
+### Removed
+
+- `num_workers`, `pin_memory` and `persistent_workers` constructor options: they had no effect (batches are produced by indexing in-memory tensors, not by a `DataLoader`).
+
 ### Fixed
 
 - Learning-rate phases: the best validation loss is now carried from one phase into the next (`_fit_expanded(init_best_val=...)`), so a later, lower-rate phase only replaces the weights when it improves on the whole run's best so far. Previously each phase restarted early stopping from `+inf` and could end on worse weights than the previous phase had found.

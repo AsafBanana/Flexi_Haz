@@ -49,10 +49,9 @@ theoretical background, the methodology and the full experimental design.
 -   Hazard, cumulative-hazard, and survival prediction.
 -   Optuna-based hyperparameter tuning with single-split or K-fold
     validation.
--   Reproducible simulation and real-data experiments with Cox PH,
-    Random Survival Forest, and the partially linear neural
-    proportional-hazards model of Zhong et al. (2022) as comparison
-    methods.
+-   Reproducible simulation and real-data experiments comparing FLEXI-Haz
+    with the partially linear neural proportional-hazards model of Zhong
+    et al. (2022), fitted with the same estimator (`model_type="zhong"`).
 
 ## Repository structure
 

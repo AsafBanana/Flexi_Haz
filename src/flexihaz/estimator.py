@@ -72,9 +72,6 @@ class FlexiHazardModel:
         device="auto",
         seed=None,
         verbose=0,
-        num_workers=0,
-        pin_memory=None,
-        persistent_workers=False,
         non_blocking=None,
         epoch_callback=None,
         scale_time=True,
@@ -136,18 +133,6 @@ class FlexiHazardModel:
         if self.weight_decay < 0:
             raise InputValidationError("weight_decay must be nonnegative.")
         
-        self.num_workers = int(num_workers)
-
-        if self.num_workers < 0:
-            raise InputValidationError("num_workers must be nonnegative.")
-        
-        if pin_memory is None:
-            self.pin_memory = self.device.type == "cuda"
-        else:
-            self.pin_memory = bool(pin_memory)
-
-        self.persistent_workers = bool(persistent_workers) and self.num_workers > 0
-
         if non_blocking is None:
             self.non_blocking = self.device.type == "cuda"
         else:
