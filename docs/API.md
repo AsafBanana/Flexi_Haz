@@ -75,6 +75,7 @@ FlexiHazardModel(
     projection_batch_size=None,
     theta_lr_multiplier=1.0,
     theta_init_subjects="all",
+    refine_theta_subjects="train",
     model_type="flexihaz",
 )
 ```
@@ -118,6 +119,8 @@ Restart 0 is identical to the single fit. After fitting, `model.restart_results_
 ### Subjects used for the Cox warm start
 
 `theta_init_subjects` (default `"all"`) fits the Cox warm start of `theta` on all subjects passed to `fit`, before the internal training/validation split; `"train"` uses the internal training subjects only.
+
+`refine_theta_subjects` (default `"train"`) chooses the rows of the exact `theta` re-solve (`refine_theta=True`): the internal training subjects, or `"all"` for every subject passed to `fit` (the validation subjects then enter the refinement as well as early stopping).
 
 ### Learning-rate multiplier for `theta`
 

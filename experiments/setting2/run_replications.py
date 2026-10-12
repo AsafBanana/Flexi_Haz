@@ -68,6 +68,16 @@ def import_flexihaz_model():
         raise
 
 
+def resolve_grid_size(spec: str, n: int):
+    """'n' -> n, 'kn' -> k * n, otherwise an integer number of equally spaced points on [0, tau]."""
+    spec = str(spec).strip().lower()
+    if spec == "n":
+        return "n"
+    if spec.endswith("n"):
+        return int(round(float(spec[:-1]) * n))
+    return int(spec)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run partially linear FLEXI-Haz simulation replications.")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
@@ -91,6 +101,11 @@ def parse_args() -> argparse.Namespace:
                         help="number of network restarts per replication (1 = original single fit)")
     parser.add_argument("--restart-selection", choices=["val_loss", "efficient_score"], default="val_loss",
                         help="how to choose among restarts: lowest validation loss, or efficient score closest to 0")
+    parser.add_argument("--refine-subjects", choices=["train", "all"], default="all",
+                        help="rows of the exact theta re-solve at each lr-phase boundary (FLEXI-Haz; paper: all subjects)")
+    parser.add_argument("--grid-size", default="n",
+                        help="equally spaced integration points on [0, tau] added to the observed times: "
+                             "'n' (default), 'kn' for k times n, or an integer")
     parser.add_argument("--theta-lr-mult", type=float, default=1.0,
                         help="learning-rate multiplier for the linear (theta) branch (1 = same rate as the network)")
     parser.add_argument("--model-type", choices=["flexihaz", "zhong"], default="flexihaz",
@@ -121,6 +136,10 @@ def main() -> None:
         model_name = f"{model_name}_k{args.n_restarts}_{args.restart_selection}"
     if args.theta_lr_mult != 1.0:
         model_name = f"{model_name}_thetalr{args.theta_lr_mult:g}"
+    if args.grid_size != "n":
+        model_name = f"{model_name}_grid{args.grid_size}"
+    if args.refine_subjects != "all":
+        model_name = f"{model_name}_refine{args.refine_subjects}"
 
     output_dir = Path(args.output_dir)
     ensure_dir(replication_dir(output_dir, model_name))
@@ -128,7 +147,7 @@ def main() -> None:
     default_params = "zhong_best_params.json" if args.model_type == "zhong" else "flexihaz_partial_linear_best_params.json"
     params_path = Path(args.params_path) if args.params_path else output_dir / "tuning" / default_params
     best_params = load_best_params(params_path)
-    best_params["grid_size"] = "n"
+    best_params["grid_size"] = "n"  # resolved per dataset below
     best_params['weight_decay'] = 0.0
     best_params['dropout'] = 0.0
 
@@ -151,6 +170,7 @@ def main() -> None:
             T, delta, X, Z = train["T"], train["delta"], train["X"], train["Z"]
 
             lr = best_params.get("learning_rate", None)
+            best_params["grid_size"] = resolve_grid_size(args.grid_size, int(T.shape[0]))
 
             model = FlexiHazardModel(
                 **best_params,
@@ -170,6 +190,7 @@ def main() -> None:
                 three_phase_lr=not args.zhong_plain,
                 standardize=not args.zhong_plain,
                 theta_init_subjects="train" if args.zhong_plain else "all",
+                refine_theta_subjects=args.refine_subjects,
                 n_restarts=args.n_restarts,
                 restart_selection=args.restart_selection,
                 theta_lr_multiplier=args.theta_lr_mult,
@@ -191,6 +212,7 @@ def main() -> None:
 
             extra = {
                 "n_train": int(T.shape[0]),
+                "grid_size": str(best_params["grid_size"]),
                 "event_rate": float(train["event_rate"]),
                 "observed_censoring_rate": float(train["observed_censoring_rate"]),
                 "random_censoring_rate": float(train["random_censoring_rate"]),
@@ -203,6 +225,7 @@ def main() -> None:
                 "refine_theta": not args.zhong_plain,
                 "standardize": not args.zhong_plain,
                 "theta_init_subjects": "train" if args.zhong_plain else "all",
+                "refine_theta_subjects": args.refine_subjects,
                 **theta_summary_extra,
             }
             if model.restart_results_ is not None:

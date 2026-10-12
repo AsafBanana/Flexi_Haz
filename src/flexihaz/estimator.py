@@ -5,6 +5,10 @@ import numpy as np
 import torch
 from sklearn.model_selection import GroupShuffleSplit
 from scipy.optimize import minimize
+
+# tolerances of the exact theta re-solve (per-event objective; the scipy defaults
+# gtol=1e-5 / ftol=2.2e-9 are too loose once the objective is of order 1e-3)
+REFINE_LBFGS_OPTIONS = {"gtol": 1e-10, "ftol": 1e-14, "maxiter": 1000}
 import warnings
 
 from .data import build_time_grid, make_expanded_data
@@ -80,6 +84,7 @@ class FlexiHazardModel:
         theta_lr_multiplier=1.0,
         model_type="flexihaz",
         theta_init_subjects="all",
+        refine_theta_subjects="train",
     ):
         self.hidden_layers = tuple(hidden_layers)
         self.activation = activation
@@ -146,6 +151,9 @@ class FlexiHazardModel:
         self.theta_init_subjects = str(theta_init_subjects).lower()
         if self.theta_init_subjects not in {"all", "train"}:
             raise InputValidationError("theta_init_subjects must be 'all' or 'train'.")
+        self.refine_theta_subjects = str(refine_theta_subjects).lower()
+        if self.refine_theta_subjects not in {"all", "train"}:
+            raise InputValidationError("refine_theta_subjects must be 'all' or 'train'.")
         self.n_restarts = int(n_restarts)
         self.restart_selection = str(restart_selection)
         if self.n_restarts < 1:
@@ -351,16 +359,22 @@ class FlexiHazardModel:
 
     @staticmethod
     def _rows_subset(expanded, idx):
-        """The rows idx of an expanded / subject-level dict (validation rows must never
-        enter the theta refinement; they are used for early stopping only)."""
+        """The rows idx of an expanded / subject-level dict."""
         return {k: (v[idx] if isinstance(v, np.ndarray) and v.shape[0] == expanded["t"].shape[0] else v)
                 for k, v in expanded.items()}
+
+    def _refinement_rows(self, expanded, train_idx):
+        """Rows entering the exact theta re-solve: the training rows (default; validation rows
+        are then used for early stopping only) or, with refine_theta_subjects="all", every row."""
+        if self.refine_theta_subjects == "all":
+            return expanded
+        return self._rows_subset(expanded, train_idx)
 
     def _train_current_net(self, expanded, train_idx, val_idx):
         self._fit_expanded_phases(expanded, train_idx, val_idx)
 
         if self.has_linear_ and self.refine_theta and not self.three_phase_lr:
-            self._refine_theta(self._rows_subset(expanded, train_idx))
+            self._refine_theta(self._refinement_rows(expanded, train_idx))
 
     def _fit_restarts(self, expanded, train_idx, val_idx, T, delta, X, X_scaled, Z, Z_scaled):
         """Train n_restarts networks on the same split; keep the one picked by restart_selection."""
@@ -655,8 +669,8 @@ class FlexiHazardModel:
             epoch_offset += phase_epochs_run
 
             if self.three_phase_lr and self.has_linear_ and self.refine_theta:
-                # exact re-solve of theta with g fixed, on the TRAINING rows only
-                self._refine_theta(self._rows_subset(expanded, train_idx))
+                # exact re-solve of theta with g fixed (training rows by default)
+                self._refine_theta(self._refinement_rows(expanded, train_idx))
 
         self.phase_histories_ = phase_histories
 
@@ -845,18 +859,23 @@ class FlexiHazardModel:
         g = self._predict_g_on_pairs(X, t, batch_size=self.batch_size).reshape(-1, 1)
         theta0 = self.net_.theta().astype(np.float64)
 
+        # normalised per EVENT, not per expanded row: with millions of expanded rows a
+        # per-row mean has gradients of order 1e-5 and L-BFGS-B's default tolerances
+        # stop before moving theta at all
+        n_events = max(float(np.sum(event)), 1.0)
+
         def obj(theta):
             eta = g + Z @ theta.reshape(-1, 1)
             eta = np.clip(eta, -80.0, 80.0)
-            return float(np.sum(length * np.exp(eta) - event * eta) / len(event))
+            return float(np.sum(length * np.exp(eta) - event * eta) / n_events)
 
         def grad(theta):
             eta = g + Z @ theta.reshape(-1, 1)
             eta = np.clip(eta, -80.0, 80.0)
             gr = Z * (length * np.exp(eta) - event)
-            return np.mean(gr, axis=0)
+            return np.sum(gr, axis=0) / n_events
 
-        res = minimize(obj, theta0, jac=grad, method="L-BFGS-B")
+        res = minimize(obj, theta0, jac=grad, method="L-BFGS-B", options=REFINE_LBFGS_OPTIONS)
         if res.success:
             with torch.no_grad():
                 self.net_.linear.weight.copy_(torch.as_tensor(res.x.reshape(1, -1), dtype=torch.float32, device=self.device))
@@ -880,7 +899,7 @@ class FlexiHazardModel:
             grad = np.sum(d_s.reshape(-1, 1) * (Z_s - cum_Zw / cum_w.reshape(-1, 1)), axis=0)
             return -ll / n_events, -grad / n_events
 
-        res = minimize(obj_grad, theta0, jac=True, method="L-BFGS-B")
+        res = minimize(obj_grad, theta0, jac=True, method="L-BFGS-B", options=REFINE_LBFGS_OPTIONS)
         if res.success:
             with torch.no_grad():
                 self.net_.linear.weight.copy_(torch.as_tensor(res.x.reshape(1, -1), dtype=torch.float32, device=self.device))

@@ -158,5 +158,6 @@ def refine_theta_zhong(g_fixed, Z, T, delta, theta0, clip=80.0, eps=1e-300):
         grad = np.sum(d_s * (Z_s - cumZw / cumw))
         return -ll / n_events, np.array([-grad / n_events])
 
-    res = minimize(lambda th: obj_grad(th)[0], x0=[theta0], jac=lambda th: obj_grad(th)[1], method="L-BFGS-B")
+    res = minimize(lambda th: obj_grad(th)[0], x0=[theta0], jac=lambda th: obj_grad(th)[1], method="L-BFGS-B",
+                   options={"gtol": 1e-10, "ftol": 1e-14, "maxiter": 1000})
     return float(res.x[0])
