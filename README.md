@@ -78,7 +78,8 @@ FLEXI-Haz/
 │   ├── experiments_README.md
 │   ├── setting1/     (setting1_README.md)
 │   ├── setting2/     (setting2_README.md)
-│   └── rotterdam/    (rotterdam_README.md)
+│   ├── rotterdam/    (rotterdam_README.md)
+│   └── survival_ci/  (survival_ci_README.md)
 ├── tests/
 └── docs/
     └── API.md
@@ -261,6 +262,12 @@ treatment-effect estimation. See
   effects on the Rotterdam data (2,982 patients), overall and split by
   estrogen-receptor status.
   [`experiments/rotterdam/rotterdam_README.md`](experiments/rotterdam/rotterdam_README.md)
+
+In addition, `experiments/survival_ci/` gives pointwise confidence intervals
+for the FLEXI-Haz **survival curve** when `X` has finite support (cross-fitted
+one-step estimator; a self-contained TensorFlow implementation), with a
+Rotterdam example on binned covariates.
+[`experiments/survival_ci/survival_ci_README.md`](experiments/survival_ci/survival_ci_README.md)
 
 ## Tests
 

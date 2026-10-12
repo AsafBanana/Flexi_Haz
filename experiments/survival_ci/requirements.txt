@@ -1,0 +1,8 @@
+# experiments/survival_ci is a separate TensorFlow implementation (it does not use the torch package)
+tensorflow>=2.16
+numpy>=1.24
+pandas>=1.5
+scipy>=1.10
+scikit-learn>=1.3
+lifelines>=0.27
+matplotlib>=3.7   # optional, for the Rotterdam figure
