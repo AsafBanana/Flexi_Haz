@@ -45,6 +45,7 @@ MAIN_BATCHES_PER_EPOCH = None
 LR_SCHEDULE = list(LR_PHASES)  # overridable via --lr-phases
 # --theta-lr-mult: learning-rate multiplier for the theta (linear) branch
 THETA_LR_MULT = 1.0
+REFINE_SUBJECTS = "all"   # rows of the exact theta re-solve: "all" subjects (paper) or the "train" split only
 
 
 def make_init_seeds(n_init):
@@ -103,14 +104,17 @@ def fit_one_trial(hidden_layers, init_seed, X_scaled, Z_scaled, Z_raw, T, delta,
     model = build_trial_model(hidden_layers, init_seed, X_scaled, Z_scaled, Z_raw, T, delta, tau, time_grid,
                               z_scaler, device, X_raw, train_subj, lr_schedule[0])
 
-    # refine_theta must see TRAIN-split rows only -- val rows are used solely
-    # for early stopping inside _fit_expanded and must never enter the point
-    # estimate (its SE, computed separately, is already train-subject-only).
-    train_expanded = dict(
-        X=expanded["X"][train_idx], Z=expanded["Z"][train_idx],
-        t=expanded["t"][train_idx], event=expanded["event"][train_idx],
-        length=expanded["length"][train_idx],
-    )
+    # rows of the exact theta re-solve: all subjects (default, as in the paper) or, with
+    # --refine-subjects train, the TRAIN-split rows only (validation rows then serve early
+    # stopping alone; the SE, computed separately, is train-subject-only either way)
+    if REFINE_SUBJECTS == "all":
+        refine_rows = expanded
+    else:
+        refine_rows = dict(
+            X=expanded["X"][train_idx], Z=expanded["Z"][train_idx],
+            t=expanded["t"][train_idx], event=expanded["event"][train_idx],
+            length=expanded["length"][train_idx],
+        )
 
     # best_val is carried across phases (not reset to +inf each phase), so a
     # later (lower-LR) phase's early stopping only ever accepts a model
@@ -121,7 +125,7 @@ def fit_one_trial(hidden_layers, init_seed, X_scaled, Z_scaled, Z_raw, T, delta,
         model.learning_rate = lr
         carried_best_val = model._fit_expanded(expanded, train_idx, val_idx, init_best_val=carried_best_val)
         model.theta_unrefined_ = model.net_.theta().copy()
-        refine_theta(model, train_expanded)
+        refine_theta(model, refine_rows)
 
     return model, carried_best_val
 
@@ -296,7 +300,7 @@ def already_done(out_csv, rep_id):
 
 def main():
     global BATCH_SIZE, MAIN_BATCHES_PER_EPOCH, LR_SCHEDULE
-    global THETA_LR_MULT
+    global THETA_LR_MULT, REFINE_SUBJECTS
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamma", type=float, required=True)
     ap.add_argument("--rho", type=float, required=True)
@@ -326,6 +330,8 @@ def main():
                      help="projection-net batch = ceil(fold inner-train size / this); overrides --proj-batch-size")
     ap.add_argument("--lr-phases", type=str, default=None, help="comma-separated LR schedule, e.g. 1e-3,1e-4,1e-5,1e-6")
     ap.add_argument("--theta-lr-mult", type=float, default=1.0, help="learning-rate multiplier for the theta branch")
+    ap.add_argument("--refine-subjects", choices=["all", "train"], default="all",
+                    help="rows of the exact theta re-solve after each lr phase (default all subjects)")
     ap.add_argument("--out", type=str, default=None)
     ap.add_argument("--save-datasets", action="store_true",
                      help="save each rep's simulated dataset (X,Z,T,delta,...) as an .npz for later inspection")
@@ -338,6 +344,7 @@ def main():
     if args.lr_phases:
         LR_SCHEDULE = [float(x) for x in args.lr_phases.split(",")]
     THETA_LR_MULT = args.theta_lr_mult
+    REFINE_SUBJECTS = args.refine_subjects
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cfg = DGMConfig(gamma=args.gamma, rho=args.rho, censoring_rate=args.censoring_rate, n=args.n, k=args.k,
@@ -376,7 +383,7 @@ def main():
           f"calibrated_c={calibrated_c:.4f} batch_size={BATCH_SIZE} proj_batch_size={_cfr.PROJECTION_TRAIN_BATCH} "
           f"main_batches_per_epoch={MAIN_BATCHES_PER_EPOCH} proj_batches_per_epoch={_cfr.PROJECTION_BATCHES_PER_EPOCH} "
           f"lr_phases={LR_SCHEDULE}"
-          + f" theta_lr_mult={THETA_LR_MULT}", flush=True)
+          + f" theta_lr_mult={THETA_LR_MULT} refine_subjects={REFINE_SUBJECTS}", flush=True)
     print(f"main net arch: {hidden_layers}  projection net arch: {proj_hidden_layers}", flush=True)
     if dataset_dir is not None:
         print(f"saving per-rep datasets to: {dataset_dir}", flush=True)
